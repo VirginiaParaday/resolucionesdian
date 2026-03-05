@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resolución #<%= resolucion.id %> — DIAN</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+  <header class="header">
+    <div class="header-inner">
+      <a href="/resoluciones" class="header-logo">
+        <div class="logo-icon">DI</div>
+        <div class="logo-text">
+          <div class="brand">DIAN — Resoluciones</div>
+          <div class="sub">Control de Facturación</div>
+        </div>
+      </a>
+      <nav class="header-nav">
+        <a href="/terceros" class="btn-header" style="color:white;border:1px solid rgba(255,255,255,0.3)">
+          👥 Terceros
+        </a>
+        <a href="/resoluciones" class="btn-header" style="color:white;border:1px solid rgba(255,255,255,0.3)">
+          ← Volver
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <div class="page-header">
+      <div class="page-title">Detalle de Resolución</div>
+      <div class="page-subtitle">Información completa del registro</div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-header">
+        <div class="detail-id">RESOLUCIÓN #<%= String(resolucion.id).padStart(4,'0') %>
+        </div>
+        <div class="detail-main-title">
+          <%= resolucion.nombre_tercero %>
+        </div>
+        <div class="detail-nit">NIT: <%= resolucion.nit %>
+        </div>
+        <div class="detail-badges">
+          <span class="badge <%=
+          resolucion.solicitud === 'Autorización' ? 'badge-auth' :
+          resolucion.solicitud === 'Habilitación' ? 'badge-hab' : 'badge-inhab'
+        %>" style="font-size:12px">
+            <%= resolucion.solicitud %>
+          </span>
+          <span class="badge badge-modal" style="font-size:11px">
+            <%= resolucion.modalidad %>
+          </span>
+        </div>
+      </div>
+
+      <div class="detail-body">
+
+        <div class="detail-section">
+          <div class="detail-section-title">📋 Datos del Tercero</div>
+          <div class="detail-grid">
+            <div class="detail-field">
+              <label>NIT</label>
+              <div class="value mono">
+                <%= resolucion.nit %>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>Nombre / Razón Social</label>
+              <div class="value">
+                <%= resolucion.nombre_tercero %>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>Sucursal / Dirección</label>
+              <div class="value">
+                <%= resolucion.sucursal || '—' %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">📄 Datos de la Resolución</div>
+          <div class="detail-grid">
+            <div class="detail-field">
+              <label>Número de Resolución</label>
+              <div class="value mono">
+                <%= resolucion.numero_resolucion %>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>Fecha de Resolución</label>
+              <div class="value">
+                <% if (resolucion.fecha_resolucion) { const _fd=resolucion.fecha_resolucion.split('-'); %>
+                  <%= _fd[2] %>/<%= _fd[1] %>/<%= _fd[0] %>
+                        <% } else { %>—<% } %>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>Vigencia</label>
+              <div class="value">
+                <%= resolucion.vigencia %> mes<%= resolucion.vigencia==1 ? '' : 'es' %>
+                    <% const mesesV=parseInt(resolucion.vigencia); if (!isNaN(mesesV) && resolucion.fecha_resolucion) {
+                      const base=new Date(resolucion.fecha_resolucion + 'T00:00:00' ); base.setMonth(base.getMonth() +
+                      mesesV); const d=String(base.getDate()).padStart(2,'0'); const
+                      m=String(base.getMonth()+1).padStart(2,'0'); const a=base.getFullYear(); %>
+                      <span style="font-size:12px;color:var(--muted);font-weight:400">
+                        — Vence: <strong>
+                          <%= d %>/<%= m %>/<%= a %>
+                        </strong>
+                      </span>
+                      <% } %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">⚙️ Clasificación</div>
+          <div class="detail-grid">
+            <div class="detail-field">
+              <label>Modalidad</label>
+              <div class="value">
+                <%= resolucion.modalidad %>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>Solicitud</label>
+              <div class="value">
+                <%= resolucion.solicitud %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">🔢 Rango de Numeración</div>
+          <div class="detail-grid">
+            <div class="detail-field">
+              <label>Prefijo</label>
+              <div class="value mono">
+                <%= resolucion.prefijo || '—' %>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>Número Inicial (Desde)</label>
+              <div class="value mono">
+                <%= Number(resolucion.desde).toLocaleString('es-CO') %>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>Número Final (Hasta)</label>
+              <div class="value mono">
+                <%= Number(resolucion.hasta).toLocaleString('es-CO') %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">🕐 Registro del Sistema</div>
+          <div class="detail-grid">
+            <div class="detail-field">
+              <label>Fecha de Creación</label>
+              <div class="value">
+                <%= resolucion.created_at %>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>Última Actualización</label>
+              <div class="value">
+                <%= resolucion.updated_at %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="form-actions">
+        <a href="/resoluciones/<%= resolucion.id %>/editar" class="btn btn-gold">✏️ Editar Resolución</a>
+        <form method="POST" action="/resoluciones/<%= resolucion.id %>?_method=DELETE" style="display:inline"
+          onsubmit="return confirm('¿Seguro desea eliminar esta resolución?')">
+          <button type="submit" class="btn btn-danger">🗑 Eliminar</button>
+        </form>
+        <a href="/resoluciones" class="btn btn-ghost" style="margin-left:auto">← Volver al listado</a>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    Sistema de Control de Resoluciones de Facturación DIAN &mdash; Desarrollado con Node.js + SQLite
+  </footer>
+
+</body>
+
+</html>

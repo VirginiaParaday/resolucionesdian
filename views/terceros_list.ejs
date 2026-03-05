@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terceros — DIAN Resoluciones</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-inner">
+            <a href="/resoluciones" class="header-logo">
+                <div class="logo-icon">DI</div>
+                <div class="logo-text">
+                    <div class="brand">DIAN — Resoluciones</div>
+                    <div class="sub">Control de Facturación</div>
+                </div>
+            </a>
+            <nav class="header-nav">
+                <a href="/terceros" class="btn-header" style="color:white;border:1px solid rgba(255,255,255,0.3)">
+                    👥 Terceros
+                </a>
+                <a href="/resoluciones/nueva" class="btn-header primary">
+                    <span>＋</span> Nueva Resolución
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+
+        <% if (message) { %>
+            <div class="alert alert-<%= message.type %>">
+                <span>
+                    <%= message.type==='success' ? '✓' : '✕' %>
+                </span>
+                <%= message.text %>
+            </div>
+            <% } %>
+
+                <div class="page-header">
+                    <div class="page-title">Gestión de Terceros</div>
+                    <div class="page-subtitle">Registro y administración de terceros (personas naturales y jurídicas)
+                    </div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-num">
+                            <%= total %>
+                        </div>
+                        <div class="stat-label">Total Terceros</div>
+                    </div>
+                </div>
+
+                <form method="GET" action="/terceros" class="filters">
+                    <div class="filter-group">
+                        <label>Buscar</label>
+                        <input type="text" name="search" value="<%= search %>"
+                            placeholder="NIT, nombre, razón social...">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                    <% if (search) { %>
+                        <a href="/terceros" class="btn btn-ghost">Limpiar</a>
+                        <% } %>
+                            <a href="/terceros/nuevo" class="btn btn-gold" style="margin-left:auto">＋ Nuevo Tercero</a>
+                </form>
+
+                <div class="table-card">
+                    <div class="table-header">
+                        <span class="table-title">Listado de Terceros</span>
+                        <span class="table-count">
+                            <%= terceros.length %> registro<%= terceros.length !==1 ? 's' : '' %>
+                        </span>
+                    </div>
+                    <div class="table-wrap">
+                        <% if (terceros.length===0) { %>
+                            <div class="empty-state">
+                                <div class="icon">👥</div>
+                                <p>No se encontraron terceros</p>
+                                <span>Registre un nuevo tercero o ajuste los filtros de búsqueda</span>
+                            </div>
+                            <% } else { %>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>NIT</th>
+                                            <th>DV</th>
+                                            <th>Tipo</th>
+                                            <th>Nombre / Razón Social</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% terceros.forEach((t, i)=> { %>
+                                            <tr>
+                                                <td class="td-num" style="color:var(--muted)">
+                                                    <%= i + 1 %>
+                                                </td>
+                                                <td class="td-num">
+                                                    <%= t.nit %>
+                                                </td>
+                                                <td class="td-num">
+                                                    <%= t.dv || '—' %>
+                                                </td>
+                                                <td>
+                                                    <span
+                                                        class="badge <%= t.tipo_persona === 'Natural' ? 'badge-hab' : 'badge-auth' %>">
+                                                        <%= t.tipo_persona %>
+                                                    </span>
+                                                </td>
+                                                <td class="td-main">
+                                                    <%= t.nombre_display %>
+                                                </td>
+                                                <td>
+                                                    <div class="actions">
+                                                        <a href="/terceros/<%= t.id %>/editar"
+                                                            class="btn btn-sm btn-gold" title="Editar">✏️</a>
+                                                        <form method="POST"
+                                                            action="/terceros/<%= t.id %>?_method=DELETE"
+                                                            style="display:inline"
+                                                            onsubmit="return confirm('¿Eliminar este tercero?')">
+                                                            <button type="submit" class="btn btn-sm btn-danger"
+                                                                title="Eliminar">🗑</button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <% }); %>
+                                    </tbody>
+                                </table>
+                                <% } %>
+                    </div>
+                </div>
+
+    </main>
+
+    <footer class="footer">
+        Sistema de Control de Resoluciones de Facturación DIAN &mdash; Desarrollado con Node.js + SQLite
+    </footer>
+
+</body>
+
+</html>

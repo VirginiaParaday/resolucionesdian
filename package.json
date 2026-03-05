@@ -1,0 +1,20 @@
+{
+  "name": "dian-resoluciones",
+  "version": "1.0.0",
+  "description": "Sistema de Control de Resoluciones de Facturación DIAN",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.7",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "method-override": "^3.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}
