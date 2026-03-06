@@ -143,7 +143,7 @@ body {
   border: 1px solid rgba(29, 28, 28, 0.15);
   transition: all 0.15s ease;
   background: var(--surface);
-  color: rgba(29, 28, 28, 0.85);
+  color: rgba(63, 62, 62, 0.85);
 }
 
 .btn-header:hover {
