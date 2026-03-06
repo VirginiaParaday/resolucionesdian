@@ -409,6 +409,25 @@ body {
   color: var(--text);
 }
 
+.sort-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  height: 32px;
+  min-width: 130px;
+  background-color: #eeeeee;
+  color: #808080;
+  border: 1px solid #aaaaaa;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.sort-btn:hover {
+  color: #2c2c2c;
+  background: #e2e2e2;
+}
+
 /* TABLE */
 .table-card {
   background: var(--surface);
