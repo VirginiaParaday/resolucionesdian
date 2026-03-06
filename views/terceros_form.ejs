@@ -129,6 +129,62 @@
                 </form>
             </div>
 
+            <% if (!tercero) { %>
+            <!-- Import Excel Section -->
+            <div class="form-card" style="margin-top:20px;">
+                <div class="form-section-header">
+                    <div class="form-section-title">Importar Terceros desde Excel</div>
+                    <div class="form-section-subtitle">Carga masiva de terceros mediante archivo .xlsx</div>
+                </div>
+                <div style="padding:20px;">
+                    <form id="importForm" method="POST" action="/terceros/importar" enctype="multipart/form-data">
+                        <div class="dropzone" id="dropzone">
+                            <div class="dropzone-icon">📄</div>
+                            <div class="dropzone-text">Arrastra y suelta tu archivo <strong>.xlsx</strong> aquí</div>
+                            <div class="dropzone-sub">o</div>
+                            <label class="btn btn-primary" style="cursor:pointer; margin-top:8px;">
+                                Seleccionar archivo
+                                <input type="file" name="archivo" id="archivoInput" accept=".xlsx,.xls" style="display:none">
+                            </label>
+                            <div id="fileName" style="margin-top:10px; font-size:13px; color:var(--muted);"></div>
+                        </div>
+                        <button type="submit" id="btnImportar" class="btn btn-goldes" style="margin-top:12px; display:none;">
+                            Importar Terceros
+                        </button>
+                    </form>
+                    <details style="margin-top:14px;">
+                        <summary style="cursor:pointer; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">
+                            Formato esperado del Excel
+                        </summary>
+                        <div style="overflow-x:auto; margin-top:8px;">
+                            <table style="font-size:12px;">
+                                <thead>
+                                    <tr>
+                                        <th>NIT</th><th>DV</th><th>TIPO_PERSONA</th>
+                                        <th>PRIMER_NOMBRE</th><th>SEGUNDO_NOMBRE</th>
+                                        <th>PRIMER_APELLIDO</th><th>SEGUNDO_APELLIDO</th>
+                                        <th>RAZON_SOCIAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1098625537</td><td>9</td><td>Natural</td>
+                                        <td>Carlos</td><td>Mauricio</td>
+                                        <td>Martinez</td><td>Sarmiento</td><td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>900123456</td><td>1</td><td>Juridica</td>
+                                        <td></td><td></td><td></td><td></td>
+                                        <td>Empresa S.A.S</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+            </div>
+            <% } %>
+
         </main>
 
         <%- include('partials/footer') %>
@@ -204,6 +260,39 @@
                     calcularDV();
                 });
             </script>
+
+        <script>
+            (function() {
+                const dz = document.getElementById('dropzone');
+                const input = document.getElementById('archivoInput');
+                const nameEl = document.getElementById('fileName');
+                const btn = document.getElementById('btnImportar');
+                if (!dz) return;
+
+                dz.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    dz.classList.add('dragover');
+                });
+                dz.addEventListener('dragleave', function() {
+                    dz.classList.remove('dragover');
+                });
+                dz.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    dz.classList.remove('dragover');
+                    if (e.dataTransfer.files.length) {
+                        input.files = e.dataTransfer.files;
+                        showFile(e.dataTransfer.files[0]);
+                    }
+                });
+                input.addEventListener('change', function() {
+                    if (input.files.length) showFile(input.files[0]);
+                });
+                function showFile(file) {
+                    nameEl.textContent = '📎 ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+                    btn.style.display = 'inline-flex';
+                }
+            })();
+        </script>
 
 </body>
 

@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
+const multer = require('multer');
+const XLSX = require('xlsx');
+const path = require('path');
+const fs = require('fs');
+
+// Multer config: temp uploads
+const upload = multer({ dest: path.join(__dirname, '..', 'tmp') });
 
 // Helper: build display name from tercero row
 function displayName(t) {
@@ -154,6 +161,71 @@ router.delete('/:id', async (req, res) => {
         req.session.message = { type: 'success', text: 'Tercero eliminado.' };
     } catch (e) {
         req.session.message = { type: 'error', text: 'Error al eliminar: ' + e.message };
+    }
+    res.redirect('/terceros');
+});
+
+// Import from Excel
+router.post('/importar', upload.single('archivo'), async (req, res) => {
+    if (!req.file) {
+        req.session.message = { type: 'error', text: 'No se seleccionó ningún archivo.' };
+        return res.redirect('/terceros');
+    }
+    try {
+        const workbook = XLSX.readFile(req.file.path);
+        const sheetName = workbook.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+
+        let insertados = 0, omitidos = 0, errores = [];
+
+        for (const row of rows) {
+            // Normalize column names (case-insensitive)
+            const r = {};
+            Object.keys(row).forEach(k => { r[k.trim().toUpperCase()] = String(row[k]).trim(); });
+
+            const nit = r['NIT'] || '';
+            const dv = r['DV'] || '';
+            const tipo = (r['TIPO_PERSONA'] || 'Natural');
+            const tipoNorm = tipo.charAt(0).toUpperCase() + tipo.slice(1).toLowerCase();
+
+            if (!nit) { errores.push('Fila sin NIT, omitida'); continue; }
+            if (!['Natural', 'Juridica'].includes(tipoNorm)) {
+                errores.push(`NIT ${nit}: tipo_persona inválido "${tipo}"`);
+                continue;
+            }
+
+            try {
+                await db.runAsync(
+                    `INSERT INTO terceros (nit, dv, tipo_persona, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, razon_social)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        nit, dv, tipoNorm,
+                        tipoNorm === 'Natural' ? (r['PRIMER_NOMBRE'] || '') : '',
+                        tipoNorm === 'Natural' ? (r['SEGUNDO_NOMBRE'] || '') : '',
+                        tipoNorm === 'Natural' ? (r['PRIMER_APELLIDO'] || '') : '',
+                        tipoNorm === 'Natural' ? (r['SEGUNDO_APELLIDO'] || '') : '',
+                        tipoNorm === 'Juridica' ? (r['RAZON_SOCIAL'] || '') : ''
+                    ]
+                );
+                insertados++;
+            } catch (e) {
+                if (e.message.includes('UNIQUE')) {
+                    omitidos++;
+                } else {
+                    errores.push(`NIT ${nit}: ${e.message}`);
+                }
+            }
+        }
+
+        // Clean up temp file
+        fs.unlink(req.file.path, () => {});
+
+        let msg = `Importación completada: ${insertados} insertado(s), ${omitidos} omitido(s) por duplicado.`;
+        if (errores.length > 0) msg += ` Errores: ${errores.slice(0, 5).join('; ')}`;
+        req.session.message = { type: insertados > 0 ? 'success' : 'error', text: msg };
+    } catch (e) {
+        fs.unlink(req.file.path, () => {});
+        req.session.message = { type: 'error', text: 'Error al procesar el archivo: ' + e.message };
     }
     res.redirect('/terceros');
 });
