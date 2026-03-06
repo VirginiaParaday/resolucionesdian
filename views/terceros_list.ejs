@@ -51,7 +51,11 @@
                     <div class="table-card">
                         <div class="table-header">
                             <span class="table-title">Listado de Terceros</span>
-                            <span class="table-count">
+                            <div style="display:flex; gap:6px; margin-left:12px;">
+                                <a href="/terceros?search=<%= search %>&sort=nit" class="btn btn-sm-te <%= sort === 'nit' ? 'active-sort' : '' %>">Ordenar por NIT</a>
+                                <a href="/terceros?search=<%= search %>&sort=nombre" class="btn btn-sm-te <%= sort === 'nombre' ? 'active-sort' : '' %>">Ordenar por Tercero</a>
+                            </div>
+                            <span class="table-count" style="margin-left:auto;">
                                 <%= terceros.length %> registro<%= terceros.length !==1 ? 's' : '' %>
                             </span>
                         </div>

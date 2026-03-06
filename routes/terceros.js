@@ -43,6 +43,7 @@ router.get('/api/buscar', async (req, res) => {
 // List all
 router.get('/', async (req, res) => {
     const search = req.query.search || '';
+    const sort = req.query.sort || '';
     let query = `SELECT *, 
         COALESCE(primer_nombre,'') || ' ' || COALESCE(segundo_nombre,'') || ' ' || COALESCE(primer_apellido,'') || ' ' || COALESCE(segundo_apellido,'') AS nombre_completo 
         FROM terceros WHERE 1=1`;
@@ -59,7 +60,13 @@ router.get('/', async (req, res) => {
         )`;
         params.push(...Array(7).fill(`%${search}%`));
     }
-    query += ' ORDER BY created_at DESC';
+    if (sort === 'nit') {
+        query += ' ORDER BY CAST(nit AS INTEGER) ASC';
+    } else if (sort === 'nombre') {
+        query += ` ORDER BY CASE WHEN tipo_persona='Juridica' THEN razon_social ELSE (COALESCE(primer_nombre,'') || ' ' || COALESCE(primer_apellido,'')) END COLLATE NOCASE ASC`;
+    } else {
+        query += ' ORDER BY created_at DESC';
+    }
     try {
         const terceros = await db.allAsync(query, params);
         // add computed display name
@@ -68,6 +75,7 @@ router.get('/', async (req, res) => {
         res.render('terceros_list', {
             terceros,
             search,
+            sort,
             total: totalRow.cnt,
             message: req.session.message || null
         });

@@ -397,6 +397,12 @@ body {
   background-color: rgb(250, 197, 197);
 }
 
+.active-sort {
+  background-color: var(--dian-blue) !important;
+  color: #fff !important;
+  border-color: var(--dian-blue) !important;
+}
+
 
 .btn-ghost:hover {
   background: var(--bg);
