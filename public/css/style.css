@@ -417,6 +417,7 @@ body {
   background-color: #eeeeee;
   color: #808080;
   border: 1px solid #aaaaaa;
+  border-radius: 999px;   /* ← aquí */
   display: inline-flex;
   align-items: center;
   justify-content: center;
