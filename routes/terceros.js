@@ -16,8 +16,8 @@ router.get('/api/buscar', async (req, res) => {
     try {
         const rows = await db.allAsync(
             `SELECT * FROM terceros
-       WHERE nit LIKE ? OR primer_nombre LIKE ? OR segundo_nombre LIKE ?
-         OR primer_apellido LIKE ? OR segundo_apellido LIKE ? OR razon_social LIKE ?
+       WHERE LOWER(nit) LIKE LOWER(?) OR LOWER(primer_nombre) LIKE LOWER(?) OR LOWER(segundo_nombre) LIKE LOWER(?)
+         OR LOWER(primer_apellido) LIKE LOWER(?) OR LOWER(segundo_apellido) LIKE LOWER(?) OR LOWER(razon_social) LIKE LOWER(?)
        ORDER BY nit LIMIT 15`,
             Array(6).fill(`%${q}%`)
         );
@@ -36,11 +36,21 @@ router.get('/api/buscar', async (req, res) => {
 // List all
 router.get('/', async (req, res) => {
     const search = req.query.search || '';
-    let query = 'SELECT * FROM terceros WHERE 1=1';
+    let query = `SELECT *, 
+        COALESCE(primer_nombre,'') || ' ' || COALESCE(segundo_nombre,'') || ' ' || COALESCE(primer_apellido,'') || ' ' || COALESCE(segundo_apellido,'') AS nombre_completo 
+        FROM terceros WHERE 1=1`;
     const params = [];
     if (search) {
-        query += ' AND (nit LIKE ? OR primer_nombre LIKE ? OR segundo_nombre LIKE ? OR primer_apellido LIKE ? OR segundo_apellido LIKE ? OR razon_social LIKE ?)';
-        params.push(...Array(6).fill(`%${search}%`));
+        query += ` AND (
+            nit LIKE ? COLLATE NOCASE 
+            OR primer_nombre LIKE ? COLLATE NOCASE 
+            OR segundo_nombre LIKE ? COLLATE NOCASE 
+            OR primer_apellido LIKE ? COLLATE NOCASE 
+            OR segundo_apellido LIKE ? COLLATE NOCASE 
+            OR razon_social LIKE ? COLLATE NOCASE
+            OR (COALESCE(primer_nombre,'') || ' ' || COALESCE(segundo_nombre,'') || ' ' || COALESCE(primer_apellido,'') || ' ' || COALESCE(segundo_apellido,'')) LIKE ? COLLATE NOCASE
+        )`;
+        params.push(...Array(7).fill(`%${search}%`));
     }
     query += ' ORDER BY created_at DESC';
     try {

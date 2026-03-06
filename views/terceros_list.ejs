@@ -34,27 +34,23 @@
                         </div>
                     </div>
 
-                    <div class="stats">
-                        <div class="stat-card">
-                            <div class="stat-num">
-                                <%= total %>
-                            </div>
-                            <div class="stat-label">Total Terceros</div>
-                        </div>
-                    </div>
-
                     <form method="GET" action="/terceros" class="filters">
                         <div class="filter-group">
                             <label>Buscar</label>
                             <input type="text" name="search" value="<%= search %>"
-                                placeholder="NIT, nombre, razón social...">
+                                placeholder="NIT, nombre, razón social..." style="min-width:300px">
                         </div>
                         <button type="submit" class="btn btn-primary">Filtrar</button>
                         <% if (search) { %>
                             <a href="/terceros" class="btn btn-ghost">Limpiar</a>
-                            <% } %>
-                                <a href="/terceros/nuevo" class="btn btn-gold" style="margin-left:auto">＋ Nuevo
-                                    Tercero</a>
+                        <% } %>
+                        <div style="border-left: 1px solid rgba(29,28,28,0.2); height: 36px; margin: 0 12px;"></div>
+                        <div style="display:flex; align-items:center; gap:6px; white-space:nowrap;">
+                            <span style="font-size:24px; font-weight:700; color:var(--dian-blue);"><%= total %></span>
+                            <span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Total Terceros</span>
+                        </div>
+                        <a href="/terceros/nuevo" class="btn btn-goldes" style="margin-left:auto">＋ Nuevo
+                            Tercero</a>
                     </form>
 
                     <div class="table-card">
@@ -107,13 +103,13 @@
                                                     <td>
                                                         <div class="actions">
                                                             <a href="/terceros/<%= t.id %>/editar"
-                                                                class="btn btn-sm btn-gold" title="Editar">✏️</a>
+                                                                class="btn btn-sm-te bted" title="Editar">Editar</a>
                                                             <form method="POST"
                                                                 action="/terceros/<%= t.id %>?_method=DELETE"
                                                                 style="display:inline"
                                                                 onsubmit="return confirm('¿Eliminar este tercero?')">
-                                                                <button type="submit" class="btn btn-sm btn-danger"
-                                                                    title="Eliminar">🗑</button>
+                                                                <button type="submit" class="btn btn-sm-te btde"
+                                                                    title="Eliminar">Eliminar</button>
                                                             </form>
                                                         </div>
                                                     </td>

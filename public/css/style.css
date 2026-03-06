@@ -15,6 +15,7 @@
   --error: #C0392B;
   --error-bg: #FDECEA;
   --dian-purple: #7f53cc;
+  --dian-goldes: #FF759A;
   --shadow: 0 2px 12px rgba(0, 48, 135, 0.08);
   --radius: 8px;
 }
@@ -283,6 +284,14 @@ body {
   white-space: nowrap;
 }
 
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 12px;
+  min-width: 36px;
+  min-height: 36px;
+  justify-content: center;
+}
+
 .btn-primary {
   background: var(--dian-blue);
   color: white;
@@ -301,6 +310,16 @@ body {
 
 .btn-gold:hover {
   background: var(--dian-gold-two);
+}
+
+.btn-goldes {
+  background: var(--dian-gold);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.btn-goldes:hover {
+  background: var(--dian-goldes);
 }
 
 .btn-outline {
@@ -327,11 +346,32 @@ body {
   font-size: 12px;
 }
 
+.btn-sm-te {
+  padding: 5px 10px;
+  font-size: 12px;
+  height: 30px;
+  width: 70px;
+  background-color: #eeeeee;
+  color: #808080;
+}
+.btn-sm-te:hover {
+  color: #000000;
+}
 .btn-ghost {
   background: transparent;
   color: var(--muted);
   border: 1px solid var(--border);
+  height: 34px;
 }
+
+.bted:hover {
+  background-color: rgb(197, 227, 241);
+}
+
+.btde:hover {
+  background-color: rgb(250, 197, 197);
+}
+
 
 .btn-ghost:hover {
   background: var(--bg);
