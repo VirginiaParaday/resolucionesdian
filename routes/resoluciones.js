@@ -1,6 +1,178 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
+const multer = require('multer');
+const { PDFParse } = require('pdf-parse');
+const path = require('path');
+const fs = require('fs');
+
+// Multer config for PDF uploads
+const uploadPdf = multer({
+  dest: path.join(__dirname, '..', 'tmp'),
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Solo se permiten archivos PDF'), false);
+  },
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+});
+
+// Helper: map solicitud text to known values
+function mapearSolicitud(valor) {
+  const v = (valor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (v.includes('inhabilitacion')) return 'Inhabilitación';
+  if (v.includes('habilitacion')) return 'Habilitación';
+  if (v.includes('autorizacion')) return 'Autorización';
+  return valor;
+}
+
+// Helper: map modalidad text to known form select values
+function mapearModalidad(valor) {
+  const v = (valor || '').toLowerCase();
+  if (v.includes('electr')) return 'Factura electrónica de venta';
+  if (v.includes('computador')) return 'Facturación computador';
+  if (v.includes('talonario') || (v.includes('factura') && v.includes('papel'))) return 'Factura de talonario o de papel';
+  if (v.includes('pos') || v.includes('d.e')) return 'D.E. / P.O.S.';
+  if (v.includes('soporte')) return 'Documento soporte';
+  if (v.includes('facturaci') && v.includes('papel')) return 'Facturación de papel';
+  return valor;
+}
+
+// POST /resoluciones/parsear-pdf — Parse a DIAN Form 1876 PDF
+router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se recibió ningún archivo PDF.' });
+  }
+
+  try {
+    const buffer = fs.readFileSync(req.file.path);
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const data = await parser.getText();
+    await parser.destroy();
+    const texto = data.text || '';
+    const lines = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    // DEBUG
+    console.log('\n========== PDF TEXT START ==========');
+    console.log(texto);
+    console.log('========== PDF TEXT END ==========\n');
+
+    // ============ DIAN FORM 1876 PARSER ============
+
+    // 1. NIT — spaced digits like "9 0 1 9 6 8 7 9 5 1"
+    let nit = '';
+    const nitMatches = texto.match(/(\d\s+\d\s+\d\s+\d\s+\d\s+\d\s+\d(?:\s+\d){1,8})/g);
+    if (nitMatches) {
+      for (const nm of nitMatches) {
+        const cleaned = nm.replace(/\s+/g, '');
+        if (cleaned.length >= 8 && cleaned.length <= 12) {
+          nit = cleaned;
+          break;
+        }
+      }
+    }
+
+    // 2. DATE — "2025-09-08 / 06:29:51 PM" or spaced
+    let fecha_resolucion = '';
+    const dateMatch = texto.match(/(\d{4}-\d{2}-\d{2})\s*\/\s*\d{2}:\d{2}:\d{2}/);
+    if (dateMatch) {
+      fecha_resolucion = dateMatch[1];
+    } else {
+      const spacedDate = texto.match(/(\d\s+\d\s+\d\s+\d)\s*-\s*(\d\s+\d)\s*-\s*(\d\s+\d)/);
+      if (spacedDate) {
+        const y = spacedDate[1].replace(/\s+/g, '');
+        const mo = spacedDate[2].replace(/\s+/g, '');
+        const d = spacedDate[3].replace(/\s+/g, '');
+        fecha_resolucion = `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
+    }
+
+    // 3. DATA ROW — all fields concatenated on one line:
+    //    "FACTURA ELECTRÓNICA DE VENTA 4 FV 1 200 AUTORIZACIÓN 1  24"
+    let modalidad = '', prefijo = '', desde = '', hasta = '', solicitud = '', vigencia = '';
+    let establecimiento = '';
+
+    const dataPattern = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)\s+(\d+)/i;
+    const dataMatch2 = texto.match(dataPattern);
+
+    if (dataMatch2) {
+      modalidad = mapearModalidad(dataMatch2[1].trim());
+      prefijo = dataMatch2[3].trim();
+      desde = dataMatch2[4].trim();
+      hasta = dataMatch2[5].trim();
+      solicitud = mapearSolicitud(dataMatch2[6].trim());
+      vigencia = dataMatch2[8].trim();
+
+      // 4. ESTABLECIMIENTO — line before the data row
+      const dataLineIdx = lines.findIndex(l => dataPattern.test(l));
+      if (dataLineIdx > 0) {
+        const prevLine = lines[dataLineIdx - 1];
+        if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !prevLine.includes('Establecimiento')) {
+          establecimiento = prevLine;
+        }
+      }
+    }
+
+    console.log('Extracted:', { nit, fecha_resolucion, modalidad, prefijo, desde, hasta, solicitud, vigencia, establecimiento });
+
+    // Result object
+    const resultado = {
+      nit,
+      establecimiento,
+      modalidad,
+      prefijo,
+      desde,
+      hasta,
+      solicitud,
+      vigencia,
+      fecha_resolucion,
+      tercero: null,
+      tercero_encontrado: false,
+      direccion_registrada: false,
+      texto_extraido: texto.substring(0, 500)
+    };
+
+    // Validate NIT against terceros table
+    if (nit) {
+      const tercero = await db.getAsync('SELECT * FROM terceros WHERE nit = ?', [nit]);
+      if (tercero) {
+        resultado.tercero_encontrado = true;
+        resultado.tercero = {
+          id: tercero.id,
+          nit: tercero.nit,
+          dv: tercero.dv || '',
+          nombre: tercero.tipo_persona === 'Juridica'
+            ? (tercero.razon_social || '')
+            : [tercero.primer_nombre, tercero.segundo_nombre, tercero.primer_apellido, tercero.segundo_apellido].filter(Boolean).join(' ')
+        };
+
+        // Check if establecimiento/address exists for this tercero
+        if (establecimiento) {
+          const dirExiste = await db.getAsync(
+            'SELECT * FROM direcciones_tercero WHERE tercero_nit = ? AND LOWER(direccion) = LOWER(?)',
+            [nit, establecimiento]
+          );
+          if (!dirExiste) {
+            // Auto-register the address
+            await db.runAsync(
+              'INSERT INTO direcciones_tercero (tercero_nit, direccion) VALUES (?, ?)',
+              [nit, establecimiento]
+            );
+            resultado.direccion_registrada = true;
+          }
+        }
+      }
+    }
+
+    res.json(resultado);
+  } catch (e) {
+    res.status(500).json({ error: 'Error al procesar el PDF: ' + e.message });
+  } finally {
+    // Clean up temp file
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path, () => {});
+    }
+  }
+});
 
 // List all
 router.get('/', async (req, res) => {

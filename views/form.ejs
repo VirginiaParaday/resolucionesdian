@@ -178,6 +178,48 @@
               <% } %>
           </div>
 
+          <% if (!resolucion) { %>
+          <!-- PDF UPLOAD SECTION -->
+          <div class="pdf-upload-section" id="pdfUploadSection">
+            <div class="pdf-section-header">
+              <span class="pdf-section-icon">📄</span>
+              <div>
+                <div class="pdf-section-title">Cargar PDF — Formulario 1876 DIAN</div>
+                <div class="pdf-section-subtitle">Arrastre o seleccione el PDF de Autorización de Numeración para llenar el formulario automáticamente</div>
+              </div>
+            </div>
+
+            <div class="pdf-drop-zone" id="pdfDropZone">
+              <div class="pdf-drop-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <rect x="8" y="4" width="32" height="40" rx="4" fill="#E8F0FE" stroke="#3167CA" stroke-width="2"/>
+                  <path d="M16 20h16M16 26h12M16 32h8" stroke="#3167CA" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="36" cy="36" r="10" fill="#3167CA"/>
+                  <path d="M36 31v10M31 36h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="pdf-drop-text">Arrastre el PDF aquí</div>
+              <div class="pdf-drop-or">— o —</div>
+              <button type="button" class="btn btn-primary pdf-select-btn" id="btnSelectPdf">
+                📁 Seleccionar PDF
+              </button>
+              <div class="pdf-drop-hint">Formato: PDF del Formulario 1876 — Autorización Numeración de Facturación</div>
+              <input type="file" id="pdfFileInput" accept=".pdf" style="display:none">
+            </div>
+
+            <!-- Progress bar -->
+            <div class="pdf-progress" id="pdfProgress" style="display:none">
+              <div class="pdf-progress-bar">
+                <div class="pdf-progress-fill" id="pdfProgressFill"></div>
+              </div>
+              <div class="pdf-progress-text" id="pdfProgressText">Procesando PDF...</div>
+            </div>
+
+            <!-- Result area -->
+            <div id="pdfResult" style="display:none"></div>
+          </div>
+          <% } %>
+
         </form>
       </div>
 
@@ -402,6 +444,209 @@
           calcularVencimiento();
           // Load addresses if editing an existing resolution
           if (currentNit) cargarDirecciones(currentNit);
+
+          // ===== PDF UPLOAD LOGIC =====
+          const dropZone = document.getElementById('pdfDropZone');
+          const fileInput = document.getElementById('pdfFileInput');
+          const btnSelect = document.getElementById('btnSelectPdf');
+          const progressDiv = document.getElementById('pdfProgress');
+          const progressFill = document.getElementById('pdfProgressFill');
+          const progressText = document.getElementById('pdfProgressText');
+          const resultDiv = document.getElementById('pdfResult');
+
+          if (!dropZone) return; // Not on new form (editing mode)
+
+          // Click to select
+          btnSelect.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            fileInput.click();
+          });
+
+          dropZone.addEventListener('click', (e) => {
+            if (e.target === btnSelect || btnSelect.contains(e.target)) return;
+            fileInput.click();
+          });
+
+          fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) procesarPdf(fileInput.files[0]);
+          });
+
+          // Drag and drop
+          ['dragenter', 'dragover'].forEach(evt => {
+            dropZone.addEventListener(evt, (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dropZone.classList.add('pdf-drag-over');
+            });
+          });
+
+          ['dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dropZone.classList.remove('pdf-drag-over');
+            });
+          });
+
+          dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+              if (files[0].type !== 'application/pdf') {
+                mostrarResultado('error', '❌ El archivo debe ser un PDF.');
+                return;
+              }
+              procesarPdf(files[0]);
+            }
+          });
+
+          function mostrarProgreso(show, text) {
+            progressDiv.style.display = show ? 'block' : 'none';
+            if (text) progressText.textContent = text;
+            if (show) {
+              progressFill.style.width = '0%';
+              setTimeout(() => { progressFill.style.width = '60%'; }, 100);
+            }
+          }
+
+          function mostrarResultado(tipo, html) {
+            resultDiv.style.display = 'block';
+            resultDiv.className = tipo === 'success' ? 'pdf-result pdf-result-success' : 'pdf-result pdf-result-error';
+            resultDiv.innerHTML = html;
+          }
+
+          function procesarPdf(file) {
+            mostrarProgreso(true, `Procesando "${file.name}"...`);
+            resultDiv.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            fetch('/resoluciones/parsear-pdf', {
+              method: 'POST',
+              body: formData
+            })
+              .then(r => r.json())
+              .then(data => {
+                progressFill.style.width = '100%';
+                setTimeout(() => { mostrarProgreso(false); }, 400);
+
+                if (data.error) {
+                  mostrarResultado('error', `❌ ${data.error}`);
+                  return;
+                }
+
+                // Fill form fields
+                let campos = [];
+
+                // NIT & Tercero
+                if (data.tercero_encontrado && data.tercero) {
+                  const t = data.tercero;
+                  buscarInput.value = t.nit + (t.dv ? '-' + t.dv : '');
+                  nitHidden.value = t.nit + (t.dv ? '-' + t.dv : '');
+                  nombreTercero.value = t.nombre;
+                  currentNit = t.nit;
+                  campos.push(`<strong>NIT:</strong> ${t.nit}${t.dv ? '-' + t.dv : ''} — ${t.nombre} ✅`);
+
+                  // Load and select address
+                  cargarDirecciones(t.nit);
+                  if (data.establecimiento) {
+                    // Wait a bit for addresses to load, then select
+                    setTimeout(() => {
+                      const opts = sucursalSelect.options;
+                      for (let i = 0; i < opts.length; i++) {
+                        if (opts[i].value.toLowerCase() === data.establecimiento.toLowerCase()) {
+                          sucursalSelect.selectedIndex = i;
+                          break;
+                        }
+                      }
+                    }, 800);
+                    campos.push(`<strong>Establecimiento:</strong> ${data.establecimiento}${data.direccion_registrada ? ' <em>(registrada automáticamente)</em>' : ''}`);
+                  }
+                } else if (data.nit) {
+                  buscarInput.value = data.nit;
+                  campos.push(`<strong>NIT:</strong> ${data.nit} ⚠️ <em>No encontrado en terceros</em>`);
+                }
+
+                // Modalidad
+                if (data.modalidad) {
+                  const selMod = document.querySelector('select[name="modalidad"]');
+                  if (selMod) {
+                    for (let i = 0; i < selMod.options.length; i++) {
+                      if (selMod.options[i].value === data.modalidad) {
+                        selMod.selectedIndex = i;
+                        break;
+                      }
+                    }
+                  }
+                  campos.push(`<strong>Modalidad:</strong> ${data.modalidad}`);
+                }
+
+                // Solicitud
+                if (data.solicitud) {
+                  const selSol = document.querySelector('select[name="solicitud"]');
+                  if (selSol) {
+                    for (let i = 0; i < selSol.options.length; i++) {
+                      if (selSol.options[i].value === data.solicitud) {
+                        selSol.selectedIndex = i;
+                        break;
+                      }
+                    }
+                  }
+                  campos.push(`<strong>Solicitud:</strong> ${data.solicitud}`);
+                }
+
+                // Prefijo
+                if (data.prefijo) {
+                  document.querySelector('input[name="prefijo"]').value = data.prefijo;
+                  campos.push(`<strong>Prefijo:</strong> ${data.prefijo}`);
+                }
+
+                // Desde
+                if (data.desde) {
+                  document.querySelector('input[name="desde"]').value = data.desde;
+                  campos.push(`<strong>Desde:</strong> ${data.desde}`);
+                }
+
+                // Hasta
+                if (data.hasta) {
+                  document.querySelector('input[name="hasta"]').value = data.hasta;
+                  campos.push(`<strong>Hasta:</strong> ${data.hasta}`);
+                }
+
+                // Vigencia
+                if (data.vigencia) {
+                  document.getElementById('vigenciaInput').value = data.vigencia;
+                  campos.push(`<strong>Vigencia:</strong> ${data.vigencia} meses`);
+                }
+
+                // Fecha resolución
+                if (data.fecha_resolucion) {
+                  document.querySelector('input[name="fecha_resolucion"]').value = data.fecha_resolucion;
+                  campos.push(`<strong>Fecha:</strong> ${data.fecha_resolucion}`);
+                }
+
+                // Recalculate expiration
+                calcularVencimiento();
+
+                if (campos.length > 0) {
+                  mostrarResultado('success',
+                    `<div class="pdf-result-title">✅ PDF procesado exitosamente — ${campos.length} campo(s) extraído(s)</div>
+                     <div class="pdf-result-fields">${campos.map(c => `<div class="pdf-field-item">${c}</div>`).join('')}</div>
+                     <div class="pdf-result-hint">Verifique los datos antes de registrar la resolución</div>`
+                  );
+                } else {
+                  mostrarResultado('error',
+                    `<div class="pdf-result-title">⚠️ No se pudieron extraer campos del PDF</div>
+                     <div class="pdf-result-hint">Asegúrese de que el archivo sea un Formulario 1876 válido de la DIAN</div>`
+                  );
+                }
+              })
+              .catch(err => {
+                mostrarProgreso(false);
+                mostrarResultado('error', `❌ Error al procesar: ${err.message}`);
+              });
+          }
         });
       </script>
 </body>
