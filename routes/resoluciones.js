@@ -259,6 +259,12 @@ router.get('/nueva', (req, res) => {
 router.post('/', async (req, res) => {
   const { nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, sucursal, desde, hasta, vigencia } = req.body;
   try {
+    // Check for duplicate resolution number
+    const existe = await db.getAsync('SELECT id FROM resoluciones WHERE numero_resolucion = ?', [numero_resolucion]);
+    if (existe) {
+      req.session.message = { type: 'error', text: `Ya existe una resolución con el número ${numero_resolucion}.` };
+      return res.redirect('/resoluciones/nueva');
+    }
     await db.runAsync(
       `INSERT INTO resoluciones (nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, sucursal, desde, hasta, vigencia)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
