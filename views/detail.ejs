@@ -1,12 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resolución #<%= resolucion.id %> — DIAN</title>
-  <link rel="stylesheet" href="/css/style.css">
-</head>
+<%- include('partials/head', { pageTitle: 'Resolución #' + resolucion.id }) %>
 
 <body>
 
@@ -170,10 +165,10 @@
         </div>
 
         <div class="form-actions">
-          <a href="/resoluciones/<%= resolucion.id %>/editar" class="btn btn-gold">✏️ Editar Resolución</a>
+          <a href="/resoluciones/<%= resolucion.id %>/editar" class="btn btn-sm-te2 bted">Editar resolución</a>
           <form method="POST" action="/resoluciones/<%= resolucion.id %>?_method=DELETE" style="display:inline"
             onsubmit="return confirm('¿Seguro desea eliminar esta resolución?')">
-            <button type="submit" class="btn btn-danger">🗑 Eliminar</button>
+            <button type="submit" class="btn btn-sm-te2 btde">Eliminar resolución</button>
           </form>
           <a href="/resoluciones" class="btn btn-ghost" style="margin-left:auto">Volver al listado</a>
         </div>
