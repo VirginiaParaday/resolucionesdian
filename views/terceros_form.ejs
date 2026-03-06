@@ -12,213 +12,207 @@
 
 <body>
 
-    <header class="header">
-        <div class="header-inner">
-            <a href="/resoluciones" class="header-logo">
-                <div class="logo-icon">DI</div>
-                <div class="logo-text">
-                    <div class="brand">DIAN — Resoluciones</div>
-                    <div class="sub">Control de Facturación</div>
+    <%- include('partials/header', { navLinks: [
+        { href: '/terceros', label: 'Terceros', active: true },
+        { href: '/resoluciones/nueva', label: 'Nueva Resolución' },
+        { href: '/resoluciones', label: 'Listado' }
+    ] }) %>
+
+        <main class="main">
+
+            <div class="page-header">
+                <div class="page-title">
+                    <%= title %>
                 </div>
-            </a>
-            <nav class="header-nav">
-                <a href="/terceros" class="btn-header" style="color:white;border:1px solid rgba(255,255,255,0.3)">
-                    ← Volver a Terceros
-                </a>
-            </nav>
-        </div>
-    </header>
-
-    <main class="main">
-
-        <div class="page-header">
-            <div class="page-title">
-                <%= title %>
-            </div>
-            <div class="page-subtitle">
-                <%= tercero ? `Editando tercero #${tercero.id}` : 'Complete los datos del nuevo tercero' %>
-            </div>
-        </div>
-
-        <div class="form-card">
-            <div class="form-section-header">
-                <div class="form-section-title">
-                    <%= tercero ? '✏️ Actualizar Tercero' : '➕ Registrar Nuevo Tercero' %>
-                </div>
-                <div class="form-section-subtitle">Directorio de Terceros — Dirección de Impuestos y Aduanas Nacionales
+                <div class="page-subtitle">
+                    <%= tercero ? `Editando tercero #${tercero.id}` : 'Complete los datos del nuevo tercero' %>
                 </div>
             </div>
 
-            <form method="POST" action="<%= action %>">
-
-                <div class="form-body">
-
-                    <!-- IDENTIFICACIÓN -->
-                    <div class="form-section">
-                        <div class="form-section-label">🆔 Identificación</div>
-                        <div class="form-grid grid-3">
-                            <div class="form-group">
-                                <label>NIT <span class="req">*</span></label>
-                                <input type="text" name="nit" id="nitInput" value="<%= tercero ? tercero.nit : '' %>"
-                                    placeholder="Ej: 900123456" required oninput="calcularDV()">
-                                <span class="hint">Número de Identificación Tributaria (sin DV)</span>
-                            </div>
-                            <div class="form-group">
-                                <label>DV</label>
-                                <input type="text" name="dv" id="dvInput" value="<%= tercero ? tercero.dv : '' %>"
-                                    placeholder="—" maxlength="1"
-                                    style="max-width:80px;background:#f0f0f0;cursor:not-allowed;font-weight:700;text-align:center"
-                                    readonly>
-                                <span class="hint">Calculado automáticamente</span>
-                            </div>
-                            <div class="form-group">
-                                <label>Tipo de Persona <span class="req">*</span></label>
-                                <select name="tipo_persona" id="tipoPersona" required onchange="toggleTipoPersona()">
-                                    <option value="Natural" <%=(tercero && tercero.tipo_persona==='Natural' )
-                                        ? 'selected' : (!tercero ? 'selected' : '' ) %>>Persona Natural</option>
-                                    <option value="Juridica" <%=(tercero && tercero.tipo_persona==='Juridica' )
-                                        ? 'selected' : '' %>>Persona Jurídica</option>
-                                </select>
-                            </div>
-                        </div>
+            <div class="form-card">
+                <div class="form-section-header">
+                    <div class="form-section-title">
+                        <%= tercero ? 'Actualizar Tercero' : 'Registrar Tercero' %>
                     </div>
-
-                    <!-- PERSONA NATURAL -->
-                    <div class="form-section" id="seccionNatural">
-                        <div class="form-section-label">👤 Datos de Persona Natural</div>
-                        <div class="form-grid grid-2">
-                            <div class="form-group">
-                                <label>Primer Nombre <span class="req">*</span></label>
-                                <input type="text" name="primer_nombre" id="primerNombre"
-                                    value="<%= tercero ? tercero.primer_nombre : '' %>" placeholder="Primer nombre"
-                                    oninput="formatNombrePropio(this)">
-                            </div>
-                            <div class="form-group">
-                                <label>Segundo Nombre</label>
-                                <input type="text" name="segundo_nombre"
-                                    value="<%= tercero ? tercero.segundo_nombre : '' %>"
-                                    placeholder="Segundo nombre (opcional)" oninput="formatNombrePropio(this)">
-                            </div>
-                            <div class="form-group">
-                                <label>Primer Apellido <span class="req">*</span></label>
-                                <input type="text" name="primer_apellido" id="primerApellido"
-                                    value="<%= tercero ? tercero.primer_apellido : '' %>" placeholder="Primer apellido"
-                                    oninput="formatNombrePropio(this)">
-                            </div>
-                            <div class="form-group">
-                                <label>Segundo Apellido</label>
-                                <input type="text" name="segundo_apellido"
-                                    value="<%= tercero ? tercero.segundo_apellido : '' %>"
-                                    placeholder="Segundo apellido (opcional)" oninput="formatNombrePropio(this)">
-                            </div>
-                        </div>
+                    <div class="form-section-subtitle">Directorio de Terceros — Dirección de Impuestos y Aduanas
+                        Nacionales
                     </div>
-
-                    <!-- PERSONA JURÍDICA -->
-                    <div class="form-section" id="seccionJuridica" style="display:none">
-                        <div class="form-section-label">🏢 Datos de Persona Jurídica</div>
-                        <div class="form-grid" style="grid-template-columns:1fr">
-                            <div class="form-group">
-                                <label>Razón Social <span class="req">*</span></label>
-                                <input type="text" name="razon_social" id="razonSocial"
-                                    value="<%= tercero ? tercero.razon_social : '' %>"
-                                    placeholder="Razón social de la empresa" oninput="formatEspacios(this)">
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
 
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">
-                        <%= tercero ? '💾 Guardar Cambios' : '✅ Registrar Tercero' %>
-                    </button>
-                    <a href="/terceros" class="btn btn-ghost">Cancelar</a>
-                    <% if (tercero) { %>
-                        <span style="margin-left:auto;font-size:12px;color:var(--muted)">
-                            Creado: <%= tercero.created_at %> &nbsp;|&nbsp; Actualizado: <%= tercero.updated_at %>
-                        </span>
-                        <% } %>
-                </div>
+                <form method="POST" action="<%= action %>">
 
-            </form>
-        </div>
+                    <div class="form-body">
 
-    </main>
+                        <!-- IDENTIFICACIÓN -->
+                        <div class="form-section">
+                            <div class="form-section-label">🆔 Identificación</div>
+                            <div class="form-grid grid-3">
+                                <div class="form-group">
+                                    <label>NIT <span class="req">*</span></label>
+                                    <input type="text" name="nit" id="nitInput"
+                                        value="<%= tercero ? tercero.nit : '' %>" placeholder="Ej: 900123456" required
+                                        oninput="calcularDV()">
+                                    <span class="hint">Número de Identificación Tributaria (sin DV)</span>
+                                </div>
+                                <div class="form-group">
+                                    <label>DV</label>
+                                    <input type="text" name="dv" id="dvInput" value="<%= tercero ? tercero.dv : '' %>"
+                                        placeholder="—" maxlength="1"
+                                        style="max-width:80px;background:#f0f0f0;cursor:not-allowed;font-weight:700;text-align:center"
+                                        readonly>
+                                    <span class="hint">Calculado automáticamente</span>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo de Persona <span class="req">*</span></label>
+                                    <select name="tipo_persona" id="tipoPersona" required
+                                        onchange="toggleTipoPersona()">
+                                        <option value="Natural" <%=(tercero && tercero.tipo_persona==='Natural' )
+                                            ? 'selected' : (!tercero ? 'selected' : '' ) %>>Persona Natural</option>
+                                        <option value="Juridica" <%=(tercero && tercero.tipo_persona==='Juridica' )
+                                            ? 'selected' : '' %>>Persona Jurídica</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
 
-    <footer class="footer">
-        Sistema de Control de Resoluciones de Facturación DIAN &mdash; Desarrollado con Node.js + SQLite
-    </footer>
+                        <!-- PERSONA NATURAL -->
+                        <div class="form-section" id="seccionNatural">
+                            <div class="form-section-label">👤 Datos de Persona Natural</div>
+                            <div class="form-grid grid-2">
+                                <div class="form-group">
+                                    <label>Primer Nombre <span class="req">*</span></label>
+                                    <input type="text" name="primer_nombre" id="primerNombre"
+                                        value="<%= tercero ? tercero.primer_nombre : '' %>" placeholder="Primer nombre"
+                                        oninput="formatNombrePropio(this)">
+                                </div>
+                                <div class="form-group">
+                                    <label>Segundo Nombre</label>
+                                    <input type="text" name="segundo_nombre"
+                                        value="<%= tercero ? tercero.segundo_nombre : '' %>"
+                                        placeholder="Segundo nombre (opcional)" oninput="formatNombrePropio(this)">
+                                </div>
+                                <div class="form-group">
+                                    <label>Primer Apellido <span class="req">*</span></label>
+                                    <input type="text" name="primer_apellido" id="primerApellido"
+                                        value="<%= tercero ? tercero.primer_apellido : '' %>"
+                                        placeholder="Primer apellido" oninput="formatNombrePropio(this)">
+                                </div>
+                                <div class="form-group">
+                                    <label>Segundo Apellido</label>
+                                    <input type="text" name="segundo_apellido"
+                                        value="<%= tercero ? tercero.segundo_apellido : '' %>"
+                                        placeholder="Segundo apellido (opcional)" oninput="formatNombrePropio(this)">
+                                </div>
+                            </div>
+                        </div>
 
-    <script>
-        function toggleTipoPersona() {
-            const tipo = document.getElementById('tipoPersona').value;
-            const secNat = document.getElementById('seccionNatural');
-            const secJur = document.getElementById('seccionJuridica');
-            const primerNombre = document.getElementById('primerNombre');
-            const primerApellido = document.getElementById('primerApellido');
-            const razonSocial = document.getElementById('razonSocial');
+                        <!-- PERSONA JURÍDICA -->
+                        <div class="form-section" id="seccionJuridica" style="display:none">
+                            <div class="form-section-label">🏢 Datos de Persona Jurídica</div>
+                            <div class="form-grid" style="grid-template-columns:1fr">
+                                <div class="form-group">
+                                    <label>Razón Social <span class="req">*</span></label>
+                                    <input type="text" name="razon_social" id="razonSocial"
+                                        value="<%= tercero ? tercero.razon_social : '' %>"
+                                        placeholder="Razón social de la empresa" oninput="formatEspacios(this)">
+                                </div>
+                            </div>
+                        </div>
 
-            if (tipo === 'Natural') {
-                secNat.style.display = '';
-                secJur.style.display = 'none';
-                primerNombre.setAttribute('required', '');
-                primerApellido.setAttribute('required', '');
-                razonSocial.removeAttribute('required');
-            } else {
-                secNat.style.display = 'none';
-                secJur.style.display = '';
-                primerNombre.removeAttribute('required');
-                primerApellido.removeAttribute('required');
-                razonSocial.setAttribute('required', '');
-            }
-        }
+                    </div>
 
-        // Nombre propio: primera letra mayúscula, resto minúscula, sin espacio inicial, sin espacios dobles
-        function formatNombrePropio(input) {
-            const pos = input.selectionStart;
-            let v = input.value;
-            // No permitir espacio al inicio
-            v = v.replace(/^\s+/, '');
-            // No más de un espacio seguido
-            v = v.replace(/ {2,}/g, ' ');
-            // Nombre propio: primera letra de cada palabra en mayúscula, resto minúscula
-            v = v.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-            input.value = v;
-            input.setSelectionRange(pos, pos);
-        }
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <%= tercero ? '💾 Guardar Cambios' : '✅ Registrar Tercero' %>
+                        </button>
+                        <a href="/terceros" class="btn btn-ghost">Cancelar</a>
+                        <% if (tercero) { %>
+                            <span style="margin-left:auto;font-size:12px;color:var(--muted)">
+                                Creado: <%= tercero.created_at %> &nbsp;|&nbsp; Actualizado: <%= tercero.updated_at %>
+                            </span>
+                            <% } %>
+                    </div>
 
-        // Espacios: sin espacio al inicio, sin espacios dobles (sin cambiar capitalización)
-        function formatEspacios(input) {
-            const pos = input.selectionStart;
-            let v = input.value;
-            v = v.replace(/^\s+/, '');
-            v = v.replace(/ {2,}/g, ' ');
-            input.value = v;
-            input.setSelectionRange(pos, pos);
-        }
+                </form>
+            </div>
 
-        // Cálculo del Dígito de Verificación (DV) — Algoritmo DIAN Colombia
-        function calcularDV() {
-            const nitInput = document.getElementById('nitInput');
-            const dvInput = document.getElementById('dvInput');
-            const nit = nitInput.value.replace(/\D/g, '');
-            if (!nit || nit.length === 0) { dvInput.value = ''; return; }
-            const primos = [71, 67, 59, 53, 47, 43, 41, 37, 29, 23, 17, 13, 7, 3];
-            const digits = nit.split('').reverse();
-            let suma = 0;
-            for (let i = 0; i < digits.length && i < primos.length; i++) {
-                suma += parseInt(digits[i]) * primos[primos.length - 1 - (digits.length - 1 - i)];
-            }
-            const residuo = suma % 11;
-            dvInput.value = residuo <= 1 ? residuo : 11 - residuo;
-        }
+        </main>
 
-        document.addEventListener('DOMContentLoaded', () => {
-            toggleTipoPersona();
-            calcularDV();
-        });
-    </script>
+        <footer class="footer">
+            Sistema de Control de Resoluciones de Facturación DIAN &mdash; Desarrollado con Node.js + SQLite
+        </footer>
+
+        <%- include('partials/clock') %>
+
+            <script>
+                function toggleTipoPersona() {
+                    const tipo = document.getElementById('tipoPersona').value;
+                    const secNat = document.getElementById('seccionNatural');
+                    const secJur = document.getElementById('seccionJuridica');
+                    const primerNombre = document.getElementById('primerNombre');
+                    const primerApellido = document.getElementById('primerApellido');
+                    const razonSocial = document.getElementById('razonSocial');
+
+                    if (tipo === 'Natural') {
+                        secNat.style.display = '';
+                        secJur.style.display = 'none';
+                        primerNombre.setAttribute('required', '');
+                        primerApellido.setAttribute('required', '');
+                        razonSocial.removeAttribute('required');
+                    } else {
+                        secNat.style.display = 'none';
+                        secJur.style.display = '';
+                        primerNombre.removeAttribute('required');
+                        primerApellido.removeAttribute('required');
+                        razonSocial.setAttribute('required', '');
+                    }
+                }
+
+                // Nombre propio: primera letra mayúscula, resto minúscula, sin espacio inicial, sin espacios dobles
+                function formatNombrePropio(input) {
+                    const pos = input.selectionStart;
+                    let v = input.value;
+                    // No permitir espacio al inicio
+                    v = v.replace(/^\s+/, '');
+                    // No más de un espacio seguido
+                    v = v.replace(/ {2,}/g, ' ');
+                    // Nombre propio: primera letra de cada palabra en mayúscula, resto minúscula
+                    v = v.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+                    input.value = v;
+                    input.setSelectionRange(pos, pos);
+                }
+
+                // Espacios: sin espacio al inicio, sin espacios dobles (sin cambiar capitalización)
+                function formatEspacios(input) {
+                    const pos = input.selectionStart;
+                    let v = input.value;
+                    v = v.replace(/^\s+/, '');
+                    v = v.replace(/ {2,}/g, ' ');
+                    input.value = v;
+                    input.setSelectionRange(pos, pos);
+                }
+
+                // Cálculo del Dígito de Verificación (DV) — Algoritmo DIAN Colombia
+                function calcularDV() {
+                    const nitInput = document.getElementById('nitInput');
+                    const dvInput = document.getElementById('dvInput');
+                    const nit = nitInput.value.replace(/\D/g, '');
+                    if (!nit || nit.length === 0) { dvInput.value = ''; return; }
+                    const primos = [71, 67, 59, 53, 47, 43, 41, 37, 29, 23, 17, 13, 7, 3];
+                    const digits = nit.split('').reverse();
+                    let suma = 0;
+                    for (let i = 0; i < digits.length && i < primos.length; i++) {
+                        suma += parseInt(digits[i]) * primos[primos.length - 1 - (digits.length - 1 - i)];
+                    }
+                    const residuo = suma % 11;
+                    dvInput.value = residuo <= 1 ? residuo : 11 - residuo;
+                }
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    toggleTipoPersona();
+                    calcularDV();
+                });
+            </script>
 
 </body>
 

@@ -1,0 +1,16 @@
+<script>
+    function actualizarReloj() {
+        const ahora = new Date();
+        const opcHora = { hour: 'numeric', minute: '2-digit', hour12: true };
+        const opcFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const hora = ahora.toLocaleTimeString('es-CO', opcHora);
+        const fecha = ahora.toLocaleDateString('es-CO', opcFecha);
+        const fechaCap = fecha.charAt(0).toUpperCase() + fecha.slice(1);
+        const elTime = document.getElementById('headerTime');
+        const elDate = document.getElementById('headerDate');
+        if (elTime) elTime.textContent = hora;
+        if (elDate) elDate.textContent = fechaCap;
+    }
+    actualizarReloj();
+    setInterval(actualizarReloj, 1000);
+</script>

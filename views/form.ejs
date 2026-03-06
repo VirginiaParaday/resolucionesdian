@@ -12,227 +12,216 @@
 
 <body>
 
-  <header class="header">
-    <div class="header-inner">
-      <a href="/resoluciones" class="header-logo">
-        <div class="logo-icon">DI</div>
-        <div class="logo-text">
-          <div class="brand">DIAN — Resoluciones</div>
-          <div class="sub">Control de Facturación</div>
+  <%- include('partials/header', { navLinks: [
+    { href: '/terceros', label: 'Terceros' },
+    { href: '/resoluciones/nueva', label: 'Nueva Resolución', active: true },
+    { href: '/resoluciones', label: 'Listado' }
+  ] }) %>
+
+    <main class="main">
+
+      <div class="page-header">
+        <div class="page-title">
+          <%= title %>
         </div>
-      </a>
-      <nav class="header-nav">
-        <a href="/terceros" class="btn-header" style="color:white;border:1px solid rgba(255,255,255,0.3)">
-          👥 Terceros
-        </a>
-        <a href="/resoluciones" class="btn-header" style="color:white;border:1px solid rgba(255,255,255,0.3)">
-          ← Volver al listado
-        </a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="main">
-
-    <div class="page-header">
-      <div class="page-title">
-        <%= title %>
-      </div>
-      <div class="page-subtitle">
-        <%= resolucion ? `Editando resolución #${resolucion.id}` : 'Complete los datos de la nueva resolución DIAN' %>
-      </div>
-    </div>
-
-    <div class="form-card">
-      <div class="form-section-header">
-        <div class="form-section-title">
-          <%= resolucion ? '✏️ Actualizar Resolución' : '➕ Registrar Nueva Resolución' %>
-        </div>
-        <div class="form-section-subtitle">Resoluciones de Facturación — Dirección de Impuestos y Aduanas Nacionales
+        <div class="page-subtitle">
+          <%= resolucion ? `Editando resolución #${resolucion.id}` : 'Complete los datos de la nueva resolución DIAN' %>
         </div>
       </div>
 
-      <form method="POST" action="<%= action %>">
-
-        <div class="form-body">
-
-          <!-- DATOS DEL TERCERO -->
-          <div class="form-section">
-            <div class="form-section-label">📋 Datos del Tercero</div>
-            <div class="form-grid grid-2">
-              <div class="form-group" style="position:relative">
-                <label>Buscar Tercero por NIT o Nombre</label>
-                <input type="text" id="buscarTercero" value="<%= resolucion ? resolucion.nit : '' %>"
-                  placeholder="Escriba NIT o nombre para buscar..." autocomplete="off">
-                <span class="hint">Busque un tercero registrado o escriba los datos manualmente</span>
-                <div id="sugerenciasTercero"
-                  style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:0 0 6px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:50;max-height:200px;overflow-y:auto">
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Nombre / Razón Social <span class="req">*</span></label>
-                <input type="text" name="nombre_tercero" id="nombreTercero"
-                  value="<%= resolucion ? resolucion.nombre_tercero : '' %>"
-                  placeholder="Nombre completo o razón social" required readonly
-                  style="background:#f0f0f0;cursor:not-allowed">
-              </div>
-              <input type="hidden" name="nit" id="nitHidden" value="<%= resolucion ? resolucion.nit : '' %>">
-            </div>
+      <div class="form-card">
+        <div class="form-section-header">
+          <div class="form-section-title">
+            <%= resolucion ? '✏️ Actualizar Resolución' : '➕ Registrar Nueva Resolución' %>
           </div>
+          <div class="form-section-subtitle">Resoluciones de Facturación — Dirección de Impuestos y Aduanas Nacionales
+          </div>
+        </div>
 
-          <!-- DATOS DE LA RESOLUCIÓN -->
-          <div class="form-section">
-            <div class="form-section-label">📄 Datos de la Resolución</div>
-            <div class="form-grid grid-3">
-              <div class="form-group">
-                <label>Número de Resolución <span class="req">*</span></label>
-                <input type="text" name="numero_resolucion"
-                  value="<%= resolucion ? resolucion.numero_resolucion : '' %>" placeholder="Ej: 18764000001234"
-                  required>
-              </div>
-              <div class="form-group">
-                <label>Fecha de la Resolución <span class="req">*</span></label>
-                <input type="date" name="fecha_resolucion" value="<%= resolucion ? resolucion.fecha_resolucion : '' %>"
-                  required>
-              </div>
-              <div class="form-group">
-                <label>Vigencia (meses) <span class="req">*</span></label>
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                  <input type="number" name="vigencia" id="vigenciaInput"
-                    value="<%= resolucion ? resolucion.vigencia : '' %>" placeholder="Ej: 12" min="1" max="600" required
-                    style="max-width:120px" oninput="calcularVencimiento()">
-                  <span style="font-size:13px;color:var(--muted)">meses</span>
-                  <span id="vigenciaLabel"
-                    style="font-size:12px;font-weight:600;color:var(--dian-blue);background:#E8F0FE;padding:4px 10px;border-radius:4px;display:none"></span>
+        <form method="POST" action="<%= action %>">
+
+          <div class="form-body">
+
+            <!-- DATOS DEL TERCERO -->
+            <div class="form-section">
+              <div class="form-section-label">📋 Datos del Tercero</div>
+              <div class="form-grid grid-2">
+                <div class="form-group" style="position:relative">
+                  <label>Buscar Tercero por NIT o Nombre</label>
+                  <input type="text" id="buscarTercero" value="<%= resolucion ? resolucion.nit : '' %>"
+                    placeholder="Escriba NIT o nombre para buscar..." autocomplete="off">
+                  <span class="hint">Busque un tercero registrado o escriba los datos manualmente</span>
+                  <div id="sugerenciasTercero"
+                    style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:0 0 6px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:50;max-height:200px;overflow-y:auto">
+                  </div>
                 </div>
-                <span class="hint">Número de meses de vigencia desde la fecha de la resolución</span>
+                <div class="form-group">
+                  <label>Nombre / Razón Social <span class="req">*</span></label>
+                  <input type="text" name="nombre_tercero" id="nombreTercero"
+                    value="<%= resolucion ? resolucion.nombre_tercero : '' %>"
+                    placeholder="Nombre completo o razón social" required readonly
+                    style="background:#f0f0f0;cursor:not-allowed">
+                </div>
+                <input type="hidden" name="nit" id="nitHidden" value="<%= resolucion ? resolucion.nit : '' %>">
               </div>
             </div>
-          </div>
 
-          <!-- MODALIDAD Y SOLICITUD -->
-          <div class="form-section">
-            <div class="form-section-label">⚙️ Clasificación</div>
-            <div class="form-grid grid-2">
-              <div class="form-group">
-                <label>Modalidad <span class="req">*</span></label>
-                <select name="modalidad" required>
-                  <option value="">— Seleccione modalidad —</option>
-                  <% const modalidades=[ 'D.E. / P.O.S.' , 'Documento soporte' , 'Facturación computador'
-                    , 'Facturación de papel' , 'Factura de talonario o de papel' , 'Factura electrónica de venta' ]; %>
-                    <% modalidades.forEach(m=> { %>
-                      <option value="<%= m %>" <%=(resolucion && resolucion.modalidad===m) ? 'selected' : '' %>><%= m %>
+            <!-- DATOS DE LA RESOLUCIÓN -->
+            <div class="form-section">
+              <div class="form-section-label">📄 Datos de la Resolución</div>
+              <div class="form-grid grid-3">
+                <div class="form-group">
+                  <label>Número de Resolución <span class="req">*</span></label>
+                  <input type="text" name="numero_resolucion"
+                    value="<%= resolucion ? resolucion.numero_resolucion : '' %>" placeholder="Ej: 18764000001234"
+                    required>
+                </div>
+                <div class="form-group">
+                  <label>Fecha de la Resolución <span class="req">*</span></label>
+                  <input type="date" name="fecha_resolucion"
+                    value="<%= resolucion ? resolucion.fecha_resolucion : '' %>" required>
+                </div>
+                <div class="form-group">
+                  <label>Vigencia (meses) <span class="req">*</span></label>
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <input type="number" name="vigencia" id="vigenciaInput"
+                      value="<%= resolucion ? resolucion.vigencia : '' %>" placeholder="Ej: 12" min="1" max="600"
+                      required style="max-width:120px" oninput="calcularVencimiento()">
+                    <span style="font-size:13px;color:var(--muted)">meses</span>
+                    <span id="vigenciaLabel"
+                      style="font-size:12px;font-weight:600;color:var(--dian-blue);background:#E8F0FE;padding:4px 10px;border-radius:4px;display:none"></span>
+                  </div>
+                  <span class="hint">Número de meses de vigencia desde la fecha de la resolución</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- MODALIDAD Y SOLICITUD -->
+            <div class="form-section">
+              <div class="form-section-label">⚙️ Clasificación</div>
+              <div class="form-grid grid-2">
+                <div class="form-group">
+                  <label>Modalidad <span class="req">*</span></label>
+                  <select name="modalidad" required>
+                    <option value="">— Seleccione modalidad —</option>
+                    <% const modalidades=[ 'D.E. / P.O.S.' , 'Documento soporte' , 'Facturación computador'
+                      , 'Facturación de papel' , 'Factura de talonario o de papel' , 'Factura electrónica de venta' ];
+                      %>
+                      <% modalidades.forEach(m=> { %>
+                        <option value="<%= m %>" <%=(resolucion && resolucion.modalidad===m) ? 'selected' : '' %>><%= m
+                            %>
+                        </option>
+                        <% }); %>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Solicitud <span class="req">*</span></label>
+                  <select name="solicitud" required>
+                    <option value="">— Seleccione tipo de solicitud —</option>
+                    <% ['Autorización', 'Habilitación' , 'Inhabilitación' ].forEach(s=> { %>
+                      <option value="<%= s %>" <%=(resolucion && resolucion.solicitud===s) ? 'selected' : '' %>><%= s %>
                       </option>
                       <% }); %>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Solicitud <span class="req">*</span></label>
-                <select name="solicitud" required>
-                  <option value="">— Seleccione tipo de solicitud —</option>
-                  <% ['Autorización', 'Habilitación' , 'Inhabilitación' ].forEach(s=> { %>
-                    <option value="<%= s %>" <%=(resolucion && resolucion.solicitud===s) ? 'selected' : '' %>><%= s %>
-                    </option>
-                    <% }); %>
-                </select>
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- FACTURACIÓN -->
-          <div class="form-section">
-            <div class="form-section-label">🔢 Rango de Numeración</div>
-            <div class="form-grid grid-4">
-              <div class="form-group">
-                <label>Prefijo</label>
-                <input type="text" name="prefijo" value="<%= resolucion ? resolucion.prefijo : '' %>"
-                  placeholder="Ej: FE, FV, SETT">
-                <span class="hint">Opcional</span>
-              </div>
-              <div class="form-group">
-                <label>Sucursal / Dirección</label>
-                <input type="text" name="sucursal" value="<%= resolucion ? resolucion.sucursal : '' %>"
-                  placeholder="Dirección de la sucursal">
-              </div>
-              <div class="form-group">
-                <label>Desde <span class="req">*</span></label>
-                <input type="number" name="desde" value="<%= resolucion ? resolucion.desde : '' %>" placeholder="Ej: 1"
-                  min="0" required>
-                <span class="hint">Número inicial del rango</span>
-              </div>
-              <div class="form-group">
-                <label>Hasta <span class="req">*</span></label>
-                <input type="number" name="hasta" value="<%= resolucion ? resolucion.hasta : '' %>"
-                  placeholder="Ej: 999999" min="0" required>
-                <span class="hint">Número final del rango</span>
+            <!-- FACTURACIÓN -->
+            <div class="form-section">
+              <div class="form-section-label">🔢 Rango de Numeración</div>
+              <div class="form-grid grid-4">
+                <div class="form-group">
+                  <label>Prefijo</label>
+                  <input type="text" name="prefijo" value="<%= resolucion ? resolucion.prefijo : '' %>"
+                    placeholder="Ej: FE, FV, SETT">
+                  <span class="hint">Opcional</span>
+                </div>
+                <div class="form-group">
+                  <label>Sucursal / Dirección</label>
+                  <input type="text" name="sucursal" value="<%= resolucion ? resolucion.sucursal : '' %>"
+                    placeholder="Dirección de la sucursal">
+                </div>
+                <div class="form-group">
+                  <label>Desde <span class="req">*</span></label>
+                  <input type="number" name="desde" value="<%= resolucion ? resolucion.desde : '' %>"
+                    placeholder="Ej: 1" min="0" required>
+                  <span class="hint">Número inicial del rango</span>
+                </div>
+                <div class="form-group">
+                  <label>Hasta <span class="req">*</span></label>
+                  <input type="number" name="hasta" value="<%= resolucion ? resolucion.hasta : '' %>"
+                    placeholder="Ej: 999999" min="0" required>
+                  <span class="hint">Número final del rango</span>
+                </div>
               </div>
             </div>
+
           </div>
 
-        </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <%= resolucion ? 'Guardar Cambios' : 'Registrar Resolución' %>
+            </button>
+            <a href="/resoluciones" class="btn btn-ghost">Cancelar</a>
+            <% if (resolucion) { %>
+              <span style="margin-left:auto;font-size:12px;color:var(--muted)">
+                Creado: <%= resolucion.created_at %> &nbsp;|&nbsp; Actualizado: <%= resolucion.updated_at %>
+              </span>
+              <% } %>
+          </div>
 
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">
-            <%= resolucion ? '💾 Guardar Cambios' : '✅ Registrar Resolución' %>
-          </button>
-          <a href="/resoluciones" class="btn btn-ghost">Cancelar</a>
-          <% if (resolucion) { %>
-            <span style="margin-left:auto;font-size:12px;color:var(--muted)">
-              Creado: <%= resolucion.created_at %> &nbsp;|&nbsp; Actualizado: <%= resolucion.updated_at %>
-            </span>
-            <% } %>
-        </div>
+        </form>
+      </div>
 
-      </form>
-    </div>
+    </main>
 
-  </main>
+    <footer class="footer">
+      Sistema de Control de Resoluciones de Facturación DIAN &mdash; Desarrollado con Node.js + SQLite
+    </footer>
+    <%- include('partials/clock') %>
+      <script>
+        function calcularVencimiento() {
+          const meses = parseInt(document.getElementById('vigenciaInput').value);
+          const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
+          const label = document.getElementById('vigenciaLabel');
 
-  <footer class="footer">
-    Sistema de Control de Resoluciones de Facturación DIAN &mdash; Desarrollado con Node.js + SQLite
-  </footer>
-  <script>
-    function calcularVencimiento() {
-      const meses = parseInt(document.getElementById('vigenciaInput').value);
-      const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
-      const label = document.getElementById('vigenciaLabel');
+          if (!meses || meses < 1) { label.style.display = 'none'; return; }
 
-      if (!meses || meses < 1) { label.style.display = 'none'; return; }
+          let base = fechaInput && fechaInput.value ? new Date(fechaInput.value + 'T00:00:00') : new Date();
+          base.setMonth(base.getMonth() + meses);
 
-      let base = fechaInput && fechaInput.value ? new Date(fechaInput.value + 'T00:00:00') : new Date();
-      base.setMonth(base.getMonth() + meses);
+          const dia = String(base.getDate()).padStart(2, '0');
+          const mes = String(base.getMonth() + 1).padStart(2, '0');
+          const anio = base.getFullYear();
 
-      const dia = String(base.getDate()).padStart(2, '0');
-      const mes = String(base.getMonth() + 1).padStart(2, '0');
-      const anio = base.getFullYear();
+          label.textContent = 'Vence: ' + dia + '/' + mes + '/' + anio;
+          label.style.display = 'inline';
+        }
 
-      label.textContent = 'Vence: ' + dia + '/' + mes + '/' + anio;
-      label.style.display = 'inline';
-    }
+        // Autocomplete terceros
+        let debounceTimer;
+        const buscarInput = document.getElementById('buscarTercero');
+        const sugerenciasDiv = document.getElementById('sugerenciasTercero');
+        const nitHidden = document.getElementById('nitHidden');
+        const nombreTercero = document.getElementById('nombreTercero');
 
-    // Autocomplete terceros
-    let debounceTimer;
-    const buscarInput = document.getElementById('buscarTercero');
-    const sugerenciasDiv = document.getElementById('sugerenciasTercero');
-    const nitHidden = document.getElementById('nitHidden');
-    const nombreTercero = document.getElementById('nombreTercero');
-
-    if (buscarInput) {
-      buscarInput.addEventListener('input', function () {
-        clearTimeout(debounceTimer);
-        const q = this.value.trim();
-        if (q.length < 2) { sugerenciasDiv.style.display = 'none'; return; }
-        debounceTimer = setTimeout(() => {
-          fetch('/terceros/api/buscar?q=' + encodeURIComponent(q))
-            .then(r => r.json())
-            .then(data => {
-              if (data.length === 0) {
-                sugerenciasDiv.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:13px">No se encontraron terceros</div>';
-                sugerenciasDiv.style.display = 'block';
-                return;
-              }
-              sugerenciasDiv.innerHTML = data.map(t =>
-                `<div class="sug-item" data-nit="${t.nit}" data-dv="${t.dv || ''}" data-nombre="${t.nombre}"
+        if (buscarInput) {
+          buscarInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            const q = this.value.trim();
+            if (q.length < 2) { sugerenciasDiv.style.display = 'none'; return; }
+            debounceTimer = setTimeout(() => {
+              fetch('/terceros/api/buscar?q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(data => {
+                  if (data.length === 0) {
+                    sugerenciasDiv.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:13px">No se encontraron terceros</div>';
+                    sugerenciasDiv.style.display = 'block';
+                    return;
+                  }
+                  sugerenciasDiv.innerHTML = data.map(t =>
+                    `<div class="sug-item" data-nit="${t.nit}" data-dv="${t.dv || ''}" data-nombre="${t.nombre}"
                   style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;transition:background 0.1s"
                   onmouseover="this.style.background='#F0F4FF'"
                   onmouseout="this.style.background='white'">
@@ -240,39 +229,39 @@
                   <span style="color:var(--muted);margin-left:8px">${t.nombre}</span>
                   <span style="float:right;font-size:11px;color:var(--dian-blue)">${t.tipo_persona}</span>
                 </div>`
-              ).join('');
-              sugerenciasDiv.style.display = 'block';
+                  ).join('');
+                  sugerenciasDiv.style.display = 'block';
 
-              sugerenciasDiv.querySelectorAll('.sug-item').forEach(item => {
-                item.addEventListener('click', function () {
-                  const nit = this.dataset.nit;
-                  const dv = this.dataset.dv;
-                  const nombre = this.dataset.nombre;
-                  buscarInput.value = nit + (dv ? '-' + dv : '');
-                  nitHidden.value = nit + (dv ? '-' + dv : '');
-                  nombreTercero.value = nombre;
-                  sugerenciasDiv.style.display = 'none';
-                });
-              });
-            })
-            .catch(() => { sugerenciasDiv.style.display = 'none'; });
-        }, 300);
-      });
+                  sugerenciasDiv.querySelectorAll('.sug-item').forEach(item => {
+                    item.addEventListener('click', function () {
+                      const nit = this.dataset.nit;
+                      const dv = this.dataset.dv;
+                      const nombre = this.dataset.nombre;
+                      buscarInput.value = nit + (dv ? '-' + dv : '');
+                      nitHidden.value = nit + (dv ? '-' + dv : '');
+                      nombreTercero.value = nombre;
+                      sugerenciasDiv.style.display = 'none';
+                    });
+                  });
+                })
+                .catch(() => { sugerenciasDiv.style.display = 'none'; });
+            }, 300);
+          });
 
-      // Close suggestions when clicking outside
-      document.addEventListener('click', function (e) {
-        if (!buscarInput.contains(e.target) && !sugerenciasDiv.contains(e.target)) {
-          sugerenciasDiv.style.display = 'none';
+          // Close suggestions when clicking outside
+          document.addEventListener('click', function (e) {
+            if (!buscarInput.contains(e.target) && !sugerenciasDiv.contains(e.target)) {
+              sugerenciasDiv.style.display = 'none';
+            }
+          });
         }
-      });
-    }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
-      if (fechaInput) fechaInput.addEventListener('change', calcularVencimiento);
-      calcularVencimiento();
-    });
-  </script>
+        document.addEventListener('DOMContentLoaded', () => {
+          const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
+          if (fechaInput) fechaInput.addEventListener('change', calcularVencimiento);
+          calcularVencimiento();
+        });
+      </script>
 </body>
 
 </html>

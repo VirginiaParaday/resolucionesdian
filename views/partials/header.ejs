@@ -1,0 +1,26 @@
+<header class="header">
+    <div class="header-inner">
+        <div class="header-top">
+            <a href="/resoluciones" class="header-logo">
+                <img src="/images/imperia_group.png" alt="Logo" class="logo-icon">
+            </a>
+            <div class="header-right">
+                <div class="header-info-bar">
+                    <span id="headerTime"></span>
+                    <span id="headerDate"></span>
+                    <span>Colombia</span>
+                    <span>Español</span>
+                </div>
+                <nav class="header-nav">
+                    <% if (typeof navLinks !== 'undefined' && navLinks) { %>
+                        <% navLinks.forEach(link => { %>
+                            <a href="<%= link.href %>" class="btn-header<%= link.active ? ' active' : '' %>">
+                                <%= link.label %>
+                            </a>
+                        <% }); %>
+                    <% } %>
+                </nav>
+            </div>
+        </div>
+    </div>
+</header>
