@@ -58,14 +58,19 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
 
     // ============ DIAN FORM 1876 PARSER ============
 
-    // 1. NIT — spaced digits like "9 0 1 9 6 8 7 9 5 1"
+    // 1. NIT + DV — spaced digits like "9 0 1 9 6 8 7 9 5 1"
+    //    The LAST digit is the DV (dígito de verificación), the rest is the NIT
     let nit = '';
-    const nitMatches = texto.match(/(\d\s+\d\s+\d\s+\d\s+\d\s+\d\s+\d(?:\s+\d){1,8})/g);
-    if (nitMatches) {
-      for (const nm of nitMatches) {
-        const cleaned = nm.replace(/\s+/g, '');
+    let dv = '';
+    const rawLines = texto.split(/\r?\n|\r/);
+    for (const rawLine of rawLines) {
+      const l = rawLine.trim();
+      // Match lines of ONLY single digits separated by spaces (8-12 digits total)
+      if (/^\d( \d){7,11}$/.test(l)) {
+        const cleaned = l.replace(/\s+/g, '');
         if (cleaned.length >= 8 && cleaned.length <= 12) {
-          nit = cleaned;
+          nit = cleaned.slice(0, -1); // All except last digit
+          dv = cleaned.slice(-1);     // Last digit is DV
           break;
         }
       }
@@ -112,7 +117,16 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
       }
     }
 
-    console.log('Extracted:', { nit, fecha_resolucion, modalidad, prefijo, desde, hasta, solicitud, vigencia, establecimiento });
+    // 5. NÚMERO DE FORMULARIO — long digit string (12+ digits), e.g. "18764098346468"
+    let numero_formulario = '';
+    for (const line of lines) {
+      if (/^\d{12,}$/.test(line)) {
+        numero_formulario = line;
+        break;
+      }
+    }
+
+    console.log('Extracted:', { nit, fecha_resolucion, modalidad, prefijo, desde, hasta, solicitud, vigencia, establecimiento, numero_formulario });
 
     // Result object
     const resultado = {
@@ -125,6 +139,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
       solicitud,
       vigencia,
       fecha_resolucion,
+      numero_formulario,
       tercero: null,
       tercero_encontrado: false,
       direccion_registrada: false,

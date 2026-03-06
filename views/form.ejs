@@ -386,9 +386,9 @@
         }
 
         if (buscarInput) {
-          buscarInput.addEventListener('input', function () {
+          function buscarTerceroDebounced() {
             clearTimeout(debounceTimer);
-            const q = this.value.trim();
+            const q = buscarInput.value.trim();
             if (q.length < 2) { sugerenciasDiv.style.display = 'none'; return; }
             debounceTimer = setTimeout(() => {
               fetch('/terceros/api/buscar?q=' + encodeURIComponent(q))
@@ -428,6 +428,12 @@
                 })
                 .catch(() => { sugerenciasDiv.style.display = 'none'; });
             }, 300);
+          }
+
+          buscarInput.addEventListener('input', buscarTerceroDebounced);
+          buscarInput.addEventListener('paste', function () {
+            // Wait a tick for the pasted value to be set
+            setTimeout(buscarTerceroDebounced, 50);
           });
 
           // Close suggestions when clicking outside
@@ -600,6 +606,12 @@
                 if (data.prefijo) {
                   document.querySelector('input[name="prefijo"]').value = data.prefijo;
                   campos.push(`<strong>Prefijo:</strong> ${data.prefijo}`);
+                }
+
+                // Número de resolución (formulario)
+                if (data.numero_formulario) {
+                  document.querySelector('input[name="numero_resolucion"]').value = data.numero_formulario;
+                  campos.push(`<strong>Nº Resolución:</strong> ${data.numero_formulario}`);
                 }
 
                 // Desde
