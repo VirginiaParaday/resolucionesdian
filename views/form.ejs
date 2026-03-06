@@ -22,6 +22,12 @@
         </div>
       </div>
 
+      <% if (typeof message !== 'undefined' && message) { %>
+        <div class="alert alert-<%= message.type %>">
+          <%= message.type === 'success' ? '✓' : '✕' %> <%= message.text %>
+        </div>
+      <% } %>
+
       <div class="form-card">
         <div class="form-section-header">
           <div class="form-section-title">
@@ -638,6 +644,12 @@
                   campos.push(`<strong>Fecha:</strong> ${data.fecha_resolucion}`);
                 }
 
+                // Warning if resolution already exists
+                let avisoExiste = '';
+                if (data.resolucion_existe) {
+                  avisoExiste = `<div style="margin-top:10px;padding:10px 14px;background:#FFF3CD;border:1px solid #FFECB5;border-radius:8px;color:#856404;font-size:13px">⚠️ <strong>Ya existe una resolución registrada con el número ${data.numero_formulario}.</strong> No se podrá registrar de nuevo.</div>`;
+                }
+
                 // Recalculate expiration
                 calcularVencimiento();
 
@@ -645,6 +657,7 @@
                   mostrarResultado('success',
                     `<div class="pdf-result-title">✅ PDF procesado exitosamente — ${campos.length} campo(s) extraído(s)</div>
                      <div class="pdf-result-fields">${campos.map(c => `<div class="pdf-field-item">${c}</div>`).join('')}</div>
+                     ${avisoExiste}
                      <div class="pdf-result-hint">Verifique los datos antes de registrar la resolución</div>`
                   );
                 } else {

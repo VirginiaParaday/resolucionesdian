@@ -143,8 +143,15 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
       tercero: null,
       tercero_encontrado: false,
       direccion_registrada: false,
+      resolucion_existe: false,
       texto_extraido: texto.substring(0, 500)
     };
+
+    // Check if resolution number already exists
+    if (numero_formulario) {
+      const resExiste = await db.getAsync('SELECT id FROM resoluciones WHERE numero_resolucion = ?', [numero_formulario]);
+      if (resExiste) resultado.resolucion_existe = true;
+    }
 
     // Validate NIT against terceros table
     if (nit) {
@@ -252,7 +259,9 @@ router.get('/', async (req, res) => {
 
 // New form
 router.get('/nueva', (req, res) => {
-  res.render('form', { resolucion: null, action: '/resoluciones', method: 'POST', title: 'Nueva Resolución' });
+  const message = req.session.message || null;
+  req.session.message = null;
+  res.render('form', { resolucion: null, action: '/resoluciones', method: 'POST', title: 'Nueva Resolución', message });
 });
 
 // Create
@@ -297,7 +306,8 @@ router.get('/:id/editar', async (req, res) => {
       resolucion,
       action: `/resoluciones/${req.params.id}?_method=PUT`,
       method: 'POST',
-      title: 'Editar Resolución'
+      title: 'Editar Resolución',
+      message: null
     });
   } catch (e) {
     res.redirect('/resoluciones');
