@@ -43,7 +43,12 @@ router.get('/api/buscar', async (req, res) => {
 // List all
 router.get('/', async (req, res) => {
     const search = req.query.search || '';
-    const sort = req.query.sort || '';
+    // guardar preferencia de orden en la sesión
+    if (req.query.sort) {
+        req.session.sort = req.query.sort;
+    }
+
+    const sort = req.session.sort || '';
     let query = `SELECT *, 
         COALESCE(primer_nombre,'') || ' ' || COALESCE(segundo_nombre,'') || ' ' || COALESCE(primer_apellido,'') || ' ' || COALESCE(segundo_apellido,'') AS nombre_completo 
         FROM terceros WHERE 1=1`;
