@@ -40,6 +40,59 @@ router.get('/api/buscar', async (req, res) => {
     }
 });
 
+// API — list addresses for a tercero by NIT
+router.get('/api/direcciones/:nit', async (req, res) => {
+    try {
+        const rows = await db.allAsync(
+            'SELECT * FROM direcciones_tercero WHERE tercero_nit = ? ORDER BY created_at DESC',
+            [req.params.nit]
+        );
+        res.json(rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// API — create address for a tercero
+router.post('/api/direcciones', async (req, res) => {
+    const { nit, direccion } = req.body;
+    if (!nit || !direccion) return res.status(400).json({ error: 'nit y direccion son requeridos' });
+    try {
+        const result = await db.runAsync(
+            'INSERT INTO direcciones_tercero (tercero_nit, direccion) VALUES (?, ?)',
+            [nit, direccion.trim()]
+        );
+        res.json({ id: result.lastID, tercero_nit: nit, direccion: direccion.trim() });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// API — update address by id
+router.put('/api/direcciones/:id', async (req, res) => {
+    const { direccion } = req.body;
+    if (!direccion) return res.status(400).json({ error: 'direccion es requerida' });
+    try {
+        await db.runAsync(
+            'UPDATE direcciones_tercero SET direccion = ? WHERE id = ?',
+            [direccion.trim(), req.params.id]
+        );
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// API — delete address by id
+router.delete('/api/direcciones/:id', async (req, res) => {
+    try {
+        await db.runAsync('DELETE FROM direcciones_tercero WHERE id = ?', [req.params.id]);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // List all
 router.get('/', async (req, res) => {
     const search = req.query.search || '';

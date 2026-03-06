@@ -145,7 +145,7 @@
                             <%= i + 1 %>
                           </td>
                           <td class="td-num">
-                            <%= r.nit ? r.nit.split('-')[0] : '' %>
+                            <%= r.nit ? Number(r.nit.split('-')[0]).toLocaleString('es-CO') : '' %>
                           </td>
                           <td>
                             <%= r.nombre_tercero %>

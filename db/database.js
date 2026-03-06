@@ -66,6 +66,16 @@ db.serialize(() => {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS direcciones_tercero (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tercero_nit TEXT NOT NULL,
+      direccion TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tercero_nit) REFERENCES terceros(nit)
+    )
+  `);
 });
 
 module.exports = db;

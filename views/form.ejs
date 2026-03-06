@@ -132,8 +132,22 @@
                 </div>
                 <div class="form-group">
                   <label>Sucursal / Dirección</label>
-                  <input type="text" name="sucursal" value="<%= resolucion ? resolucion.sucursal : '' %>"
-                    placeholder="Dirección de la sucursal">
+                  <div class="sucursal-wrapper">
+                    <select name="sucursal" id="sucursalSelect">
+                      <option value="">— Seleccione dirección —</option>
+                      <% if (resolucion && resolucion.sucursal) { %>
+                        <option value="<%= resolucion.sucursal %>" selected><%= resolucion.sucursal %></option>
+                      <% } %>
+                    </select>
+                    <button type="button" class="btn-add-dir" id="btnToggleDir" title="Gestionar direcciones">+</button>
+                  </div>
+                  <div id="panelDirecciones" class="sucursal-panel" style="display:none">
+                    <div class="dir-add-row">
+                      <input type="text" id="nuevaDireccion" placeholder="Escriba nueva dirección...">
+                      <button type="button" class="btn btn-primary btn-sm" id="btnAgregarDir">Agregar</button>
+                    </div>
+                    <div id="listaDirecciones" class="dir-list"></div>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label>Desde <span class="req">*</span></label>
@@ -197,6 +211,138 @@
         const nitHidden = document.getElementById('nitHidden');
         const nombreTercero = document.getElementById('nombreTercero');
 
+        // Direcciones elements
+        const sucursalSelect = document.getElementById('sucursalSelect');
+        const btnToggleDir = document.getElementById('btnToggleDir');
+        const panelDir = document.getElementById('panelDirecciones');
+        const btnAgregarDir = document.getElementById('btnAgregarDir');
+        const nuevaDirInput = document.getElementById('nuevaDireccion');
+        const listaDirDiv = document.getElementById('listaDirecciones');
+        let currentNit = '<%= resolucion ? resolucion.nit : "" %>'.replace(/-\d+$/, '').split('-')[0];
+
+        // Toggle direcciones panel
+        if (btnToggleDir) {
+          btnToggleDir.addEventListener('click', () => {
+            const open = panelDir.style.display !== 'none';
+            panelDir.style.display = open ? 'none' : 'block';
+            btnToggleDir.textContent = open ? '+' : '−';
+          });
+        }
+
+        // Load addresses for a NIT
+        function cargarDirecciones(nit) {
+          if (!nit) return;
+          const nitClean = nit.replace(/-\d+$/, '').split('-')[0];
+          fetch('/terceros/api/direcciones/' + encodeURIComponent(nitClean))
+            .then(r => r.json())
+            .then(dirs => {
+              // Update select
+              const currentVal = sucursalSelect.value;
+              sucursalSelect.innerHTML = '<option value="">— Seleccione dirección —</option>';
+              dirs.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.direccion;
+                opt.textContent = d.direccion;
+                if (d.direccion === currentVal) opt.selected = true;
+                sucursalSelect.appendChild(opt);
+              });
+              // Update list in panel
+              if (dirs.length === 0) {
+                listaDirDiv.innerHTML = '<div style="padding:8px 0;color:var(--muted);font-size:12px">No hay direcciones registradas</div>';
+              } else {
+                listaDirDiv.innerHTML = dirs.map(d =>
+                  `<div class="dir-list-item" data-id="${d.id}">
+                    <span class="dir-text">${d.direccion}</span>
+                    <div class="dir-actions">
+                      <button type="button" class="btn-edit-dir" data-id="${d.id}" data-dir="${d.direccion}" title="Editar">✏️</button>
+                      <button type="button" class="btn-del-dir" data-id="${d.id}" title="Eliminar">✕</button>
+                    </div>
+                  </div>`
+                ).join('');
+                // Bind edit buttons
+                listaDirDiv.querySelectorAll('.btn-edit-dir').forEach(btn => {
+                  btn.addEventListener('click', function () {
+                    iniciarEdicion(this.dataset.id, this.dataset.dir);
+                  });
+                });
+                // Bind delete buttons
+                listaDirDiv.querySelectorAll('.btn-del-dir').forEach(btn => {
+                  btn.addEventListener('click', function () {
+                    eliminarDireccion(this.dataset.id);
+                  });
+                });
+              }
+            })
+            .catch(() => {});
+        }
+
+        // Inline edit: transform row into input
+        function iniciarEdicion(id, currentDir) {
+          const item = listaDirDiv.querySelector(`.dir-list-item[data-id="${id}"]`);
+          if (!item) return;
+          item.innerHTML = `
+            <input type="text" class="dir-edit-input" value="${currentDir}" style="flex:1;padding:5px 8px;border:1px solid var(--dian-blue);border-radius:4px;font-size:13px;font-family:inherit">
+            <div class="dir-actions">
+              <button type="button" class="btn-save-dir" data-id="${id}" title="Guardar">✓</button>
+              <button type="button" class="btn-cancel-dir" title="Cancelar">✗</button>
+            </div>
+          `;
+          const input = item.querySelector('.dir-edit-input');
+          input.focus();
+          input.select();
+          item.querySelector('.btn-save-dir').addEventListener('click', () => {
+            const newDir = input.value.trim();
+            if (newDir) editarDireccion(id, newDir);
+          });
+          item.querySelector('.btn-cancel-dir').addEventListener('click', () => {
+            cargarDirecciones(currentNit);
+          });
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); const newDir = input.value.trim(); if (newDir) editarDireccion(id, newDir); }
+            if (e.key === 'Escape') cargarDirecciones(currentNit);
+          });
+        }
+
+        // Edit address via API
+        function editarDireccion(id, direccion) {
+          fetch('/terceros/api/direcciones/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ direccion })
+          })
+            .then(r => r.json())
+            .then(() => cargarDirecciones(currentNit))
+            .catch(() => {});
+        }
+
+        // Add new address
+        if (btnAgregarDir) {
+          btnAgregarDir.addEventListener('click', () => {
+            const dir = nuevaDirInput.value.trim();
+            if (!dir) return;
+            if (!currentNit) { alert('Seleccione un tercero primero'); return; }
+            fetch('/terceros/api/direcciones', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nit: currentNit, direccion: dir })
+            })
+              .then(r => r.json())
+              .then(() => {
+                nuevaDirInput.value = '';
+                cargarDirecciones(currentNit);
+              })
+              .catch(() => {});
+          });
+        }
+
+        // Delete address
+        function eliminarDireccion(id) {
+          fetch('/terceros/api/direcciones/' + id, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(() => cargarDirecciones(currentNit))
+            .catch(() => {});
+        }
+
         if (buscarInput) {
           buscarInput.addEventListener('input', function () {
             clearTimeout(debounceTimer);
@@ -232,6 +378,9 @@
                       nitHidden.value = nit + (dv ? '-' + dv : '');
                       nombreTercero.value = nombre;
                       sugerenciasDiv.style.display = 'none';
+                      // Load addresses for selected tercero
+                      currentNit = nit;
+                      cargarDirecciones(nit);
                     });
                   });
                 })
@@ -251,6 +400,8 @@
           const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
           if (fechaInput) fechaInput.addEventListener('change', calcularVencimiento);
           calcularVencimiento();
+          // Load addresses if editing an existing resolution
+          if (currentNit) cargarDirecciones(currentNit);
         });
       </script>
 </body>
