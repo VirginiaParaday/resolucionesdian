@@ -38,6 +38,7 @@
         </div>
 
         <form method="POST" action="<%= action %>">
+          <input type="hidden" name="pdf_temp" id="pdfTempInput" value="">
 
           <div class="form-body">
 
@@ -642,6 +643,12 @@
                 if (data.fecha_resolucion) {
                   document.querySelector('input[name="fecha_resolucion"]').value = data.fecha_resolucion;
                   campos.push(`<strong>Fecha:</strong> ${data.fecha_resolucion}`);
+                }
+
+                // Store temp PDF filename for deferred save
+                if (data.pdf_temp) {
+                  document.getElementById('pdfTempInput').value = data.pdf_temp;
+                  campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#E67E22;font-size:12px">PDF adjunto pendiente de almacenar</span></div>`);
                 }
 
                 // Warning if resolution already exists

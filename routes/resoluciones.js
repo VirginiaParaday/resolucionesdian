@@ -144,6 +144,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
       tercero_encontrado: false,
       direccion_registrada: false,
       resolucion_existe: false,
+      pdf_temp: req.file ? path.basename(req.file.path) : '',
       texto_extraido: texto.substring(0, 500)
     };
 
@@ -188,12 +189,10 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
     res.json(resultado);
   } catch (e) {
     res.status(500).json({ error: 'Error al procesar el PDF: ' + e.message });
-  } finally {
-    // Clean up temp file
-    if (req.file && req.file.path) {
-      fs.unlink(req.file.path, () => {});
-    }
+    // Clean up temp file only on error
+    if (req.file && req.file.path) fs.unlink(req.file.path, () => {});
   }
+  // Note: temp file is kept for deferred save on registration
 });
 
 // List all
@@ -266,7 +265,7 @@ router.get('/nueva', (req, res) => {
 
 // Create
 router.post('/', async (req, res) => {
-  const { nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, sucursal, desde, hasta, vigencia } = req.body;
+  const { nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, sucursal, desde, hasta, vigencia, pdf_temp } = req.body;
   try {
     // Check for duplicate resolution number
     const existe = await db.getAsync('SELECT id FROM resoluciones WHERE numero_resolucion = ?', [numero_resolucion]);
@@ -279,6 +278,24 @@ router.post('/', async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo || '', sucursal || '', desde, hasta, vigencia]
     );
+
+    // Save PDF permanently if a temp file was attached
+    if (pdf_temp) {
+      try {
+        const tmpPath = path.join(__dirname, '..', 'tmp', pdf_temp);
+        const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+        if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
+        const destName = `${fecha_resolucion}-${numero_resolucion}.pdf`;
+        const destPath = path.join(pdfsDir, destName);
+        if (fs.existsSync(tmpPath)) {
+          fs.copyFileSync(tmpPath, destPath);
+          fs.unlink(tmpPath, () => {});
+        }
+      } catch (pdfErr) {
+        console.error('Error al guardar PDF:', pdfErr.message);
+      }
+    }
+
     req.session.message = { type: 'success', text: 'Resolución registrada exitosamente.' };
   } catch (e) {
     req.session.message = { type: 'error', text: 'Error al registrar: ' + e.message };
