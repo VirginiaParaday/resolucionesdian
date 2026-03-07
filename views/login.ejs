@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<%- include('partials/head', { pageTitle: 'Iniciar Sesión' }) %>
+
+<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Sans',sans-serif;overflow:hidden;position:relative">
+
+  <!-- SVG Geometric Background -->
+  <svg style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#0f1b3d"/>
+        <stop offset="50%" style="stop-color:#1e3a6e"/>
+        <stop offset="100%" style="stop-color:#2a5298"/>
+      </linearGradient>
+      <linearGradient id="bg2" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" style="stop-color:#14baac;stop-opacity:0.3"/>
+        <stop offset="100%" style="stop-color:#3167ca;stop-opacity:0.1"/>
+      </linearGradient>
+    </defs>
+    <!-- Base -->
+    <rect width="1440" height="900" fill="url(#bg1)"/>
+    <!-- Polygonal shapes -->
+    <polygon points="0,0 400,0 250,300 0,200" fill="rgba(255,255,255,0.03)"/>
+    <polygon points="1440,0 1100,0 1200,250 1440,180" fill="rgba(255,255,255,0.04)"/>
+    <polygon points="0,900 0,500 350,650 200,900" fill="rgba(255,255,255,0.025)"/>
+    <polygon points="1440,900 1440,600 1100,750 1250,900" fill="rgba(255,255,255,0.03)"/>
+    <polygon points="500,0 800,0 700,350 450,250" fill="rgba(255,255,255,0.02)"/>
+    <polygon points="600,900 900,900 850,550 550,600" fill="rgba(255,255,255,0.02)"/>
+    <polygon points="200,300 500,200 600,500 300,550" fill="rgba(255,255,255,0.015)"/>
+    <polygon points="900,100 1150,50 1100,400 850,350" fill="rgba(255,255,255,0.02)"/>
+    <polygon points="700,400 1000,350 1050,700 750,650" fill="rgba(255,255,255,0.018)"/>
+    <polygon points="0,400 200,350 250,600 50,650" fill="rgba(255,255,255,0.025)"/>
+    <polygon points="1200,400 1440,350 1440,650 1250,600" fill="rgba(255,255,255,0.02)"/>
+    <!-- Accent lines -->
+    <line x1="300" y1="0" x2="150" y2="400" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+    <line x1="600" y1="0" x2="500" y2="500" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <line x1="1000" y1="0" x2="900" y2="450" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    <line x1="1300" y1="0" x2="1200" y2="350" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <line x1="0" y1="600" x2="400" y2="500" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+    <line x1="1440" y1="700" x2="1000" y2="600" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <!-- Overlay gradient -->
+    <rect width="1440" height="900" fill="url(#bg2)"/>
+  </svg>
+
+  <!-- Login Card -->
+  <div style="position:relative;z-index:1;background:rgba(255,255,255,0.95);backdrop-filter:blur(10px);padding:0;width:380px;box-shadow:0 12px 48px rgba(0,0,0,0.3);overflow:hidden">
+    <!-- Header with logo only -->
+    <div style="background:#F4F6F9;padding:28px 32px;text-align:center;border-bottom:1px solid #DDE2EC">
+      <img src="/images/imperia_group.png" alt="Logo" style="height:40px">
+      <div style="color:#6B7A99;font-size:11px;margin-top:8px;letter-spacing:0.3px">Asesoría contable, tributaria, financiera y jurídica</div>
+    </div>
+
+    <!-- Form -->
+    <div style="padding:32px">
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div style="background:#FDECEA;color:#C0392B;padding:10px 14px;font-size:13px;font-weight:500;margin-bottom:20px;border-left:3px solid #C0392B;display:flex;align-items:center;gap:8px">
+          <span>✕</span> <%= error %>
+        </div>
+      <% } %>
+
+      <form method="POST" action="/login">
+        <div style="margin-bottom:20px">
+          <label style="display:block;font-size:12px;font-weight:600;color:#1A2340;letter-spacing:0.3px;margin-bottom:6px">Usuario</label>
+          <input type="text" name="usuario" required autofocus
+            placeholder="Ingrese su usuario"
+            style="width:100%;padding:10px 14px;border:1px solid #DDE2EC;font-family:inherit;font-size:14px;color:#1A2340;background:#F4F6F9;transition:all 0.15s ease;outline:none"
+            onfocus="this.style.borderColor='#3167ca';this.style.boxShadow='0 0 0 3px rgba(49,103,202,0.08)';this.style.background='#fff'"
+            onblur="this.style.borderColor='#DDE2EC';this.style.boxShadow='none';this.style.background='#F4F6F9'">
+        </div>
+        <div style="margin-bottom:24px">
+          <label style="display:block;font-size:12px;font-weight:600;color:#1A2340;letter-spacing:0.3px;margin-bottom:6px">Contraseña</label>
+          <input type="password" name="contrasena" required
+            placeholder="Ingrese su contraseña"
+            style="width:100%;padding:10px 14px;border:1px solid #DDE2EC;font-family:inherit;font-size:14px;color:#1A2340;background:#F4F6F9;transition:all 0.15s ease;outline:none"
+            onfocus="this.style.borderColor='#3167ca';this.style.boxShadow='0 0 0 3px rgba(49,103,202,0.08)';this.style.background='#fff'"
+            onblur="this.style.borderColor='#DDE2EC';this.style.boxShadow='none';this.style.background='#F4F6F9'">
+        </div>
+        <div style="margin-bottom:20px;display:flex;align-items:center;gap:6px">
+          <input type="checkbox" name="recordarme" id="recordarme" style="width:auto;accent-color:#3167ca;cursor:pointer">
+          <label for="recordarme" style="font-size:13px;color:#6B7A99;cursor:pointer;user-select:none">Recordarme</label>
+        </div>
+        <button type="submit"
+          style="width:100%;padding:12px;background:#3167ca;color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s ease"
+          onmouseover="this.style.background='#14baac';this.style.boxShadow='0 4px 16px rgba(20,186,172,0.35)'"
+          onmouseout="this.style.background='#3167ca';this.style.boxShadow='none'">
+          Iniciar Sesión
+        </button>
+      </form>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:12px 32px;background:#F4F6F9;border-top:1px solid #DDE2EC;text-align:center">
+      <span style="font-size:11px;color:#6B7A99">© 2026 Imperia Group</span>
+    </div>
+  </div>
+
+</body>
+</html>

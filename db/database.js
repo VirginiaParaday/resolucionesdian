@@ -76,6 +76,35 @@ db.serialize(() => {
       FOREIGN KEY (tercero_nit) REFERENCES terceros(nit)
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario TEXT NOT NULL UNIQUE,
+      contrasena TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS remember_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+  `);
+
+  // Seed default user (IG / 1973) — only if not exists
+  const bcrypt = require('bcrypt');
+  db.get(`SELECT id FROM usuarios WHERE usuario = ?`, ['IG'], (err, row) => {
+    if (!row) {
+      const hash = bcrypt.hashSync('1973', 10);
+      db.run(`INSERT INTO usuarios (usuario, contrasena) VALUES (?, ?)`, ['IG', hash]);
+    }
+  });
 });
 
 module.exports = db;
