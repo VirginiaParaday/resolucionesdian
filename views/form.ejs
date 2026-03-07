@@ -174,8 +174,11 @@
           </div>
 
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="btnRegistrar">
               <%= resolucion ? 'Guardar Cambios' : 'Registrar Resolución' %>
+            </button>
+            <button type="button" class="btn btn-primary" id="btnGuardarPdf" style="display:none;background:#E67E22;border-color:#E67E22">
+              📄 Guardar PDF
             </button>
             <a href="/resoluciones" class="btn btn-ghost">Cancelar</a>
             <% if (resolucion) { %>
@@ -645,16 +648,80 @@
                   campos.push(`<strong>Fecha:</strong> ${data.fecha_resolucion}`);
                 }
 
-                // Store temp PDF filename for deferred save
-                if (data.pdf_temp) {
-                  document.getElementById('pdfTempInput').value = data.pdf_temp;
-                  campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#E67E22;font-size:12px">PDF adjunto pendiente de almacenar</span></div>`);
+                // ============ SCENARIO HANDLING ============
+                const btnRegistrar = document.getElementById('btnRegistrar');
+                const btnGuardarPdf = document.getElementById('btnGuardarPdf');
+
+                if (data.resolucion_existe && data.pdf_existe) {
+                  // SCENARIO 1: Resolution exists AND PDF file exists
+                  campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#27AE60" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#27AE60;font-size:12px;font-weight:600">${data.pdf_nombre}.pdf</span></div>`);
+                  document.querySelectorAll('form input:not([type=hidden]), form select').forEach(el => {
+                    el.setAttribute('readonly', true);
+                    el.setAttribute('disabled', true);
+                    el.style.opacity = '0.7';
+                  });
+                  btnRegistrar.disabled = true;
+                  btnRegistrar.style.opacity = '0.5';
+                  btnRegistrar.style.cursor = 'not-allowed';
+
+                } else if (data.resolucion_existe && !data.pdf_existe) {
+                  // SCENARIO 2: Resolution exists BUT no PDF — allow saving PDF only
+                  // Make all form inputs readonly
+                  document.querySelectorAll('form input:not([type=hidden]), form select').forEach(el => {
+                    el.setAttribute('readonly', true);
+                    el.setAttribute('disabled', true);
+                    el.style.opacity = '0.7';
+                  });
+                  btnRegistrar.disabled = true;
+                  btnRegistrar.style.opacity = '0.5';
+                  btnRegistrar.style.cursor = 'not-allowed';
+                  // Show Guardar PDF button
+                  btnGuardarPdf.style.display = 'inline-flex';
+                  btnGuardarPdf.onclick = function () {
+                    btnGuardarPdf.disabled = true;
+                    btnGuardarPdf.textContent = '⏳ Guardando...';
+                    fetch('/resoluciones/guardar-pdf', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        pdf_temp: data.pdf_temp,
+                        fecha_resolucion: data.resolucion_datos.fecha_resolucion,
+                        numero_resolucion: data.resolucion_datos.numero_resolucion
+                      })
+                    })
+                      .then(r => r.json())
+                      .then(resp => {
+                        if (resp.ok) {
+                          btnGuardarPdf.textContent = '✅ PDF Guardado';
+                          btnGuardarPdf.style.background = '#27AE60';
+                          btnGuardarPdf.style.borderColor = '#27AE60';
+                        } else {
+                          btnGuardarPdf.textContent = '❌ Error';
+                          btnGuardarPdf.disabled = false;
+                          alert(resp.error);
+                        }
+                      })
+                      .catch(() => {
+                        btnGuardarPdf.textContent = '❌ Error';
+                        btnGuardarPdf.disabled = false;
+                      });
+                  };
+                  campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#E67E22;font-size:12px">PDF adjunto pendiente de guardar.</span></div>`);
+
+                } else {
+                  // SCENARIO 3: Resolution does NOT exist — normal flow
+                  if (data.pdf_temp) {
+                    document.getElementById('pdfTempInput').value = data.pdf_temp;
+                    campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#E67E22;font-size:12px">PDF adjunto pendiente de almacenar</span></div>`);
+                  }
                 }
 
-                // Warning if resolution already exists
+                // Warning banner for existing resolutions
                 let avisoExiste = '';
-                if (data.resolucion_existe) {
+                if (data.resolucion_existe && data.pdf_existe) {
                   avisoExiste = `<div style="margin-top:10px;padding:10px 14px;background:#FFF3CD;border:1px solid #FFECB5;border-radius:8px;color:#856404;font-size:13px">⚠️ <strong>Ya existe una resolución registrada con el número ${data.numero_formulario}.</strong> No se podrá registrar de nuevo.</div>`;
+                } else if (data.resolucion_existe && !data.pdf_existe) {
+                  avisoExiste = `<div style="margin-top:10px;padding:10px 14px;background:#FFF3CD;border:1px solid #FFECB5;border-radius:8px;color:#856404;font-size:13px">⚠️ <strong>Ya existe la resolución ${data.numero_formulario} sin archivo PDF.</strong></div>`;
                 }
 
                 // Recalculate expiration

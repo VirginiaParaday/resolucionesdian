@@ -3,3 +3,5 @@ db/*.db
 .env
 *.log
 .DS_Store
+*.pdf
+tmp/

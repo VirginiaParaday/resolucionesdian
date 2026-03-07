@@ -150,8 +150,16 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
 
     // Check if resolution number already exists
     if (numero_formulario) {
-      const resExiste = await db.getAsync('SELECT id FROM resoluciones WHERE numero_resolucion = ?', [numero_formulario]);
-      if (resExiste) resultado.resolucion_existe = true;
+      const resExiste = await db.getAsync('SELECT * FROM resoluciones WHERE numero_resolucion = ?', [numero_formulario]);
+      if (resExiste) {
+        resultado.resolucion_existe = true;
+        resultado.resolucion_datos = resExiste;
+        // Check if PDF file already exists
+        const pdfNombre = `${resExiste.fecha_resolucion}-${resExiste.numero_resolucion}`;
+        const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', pdfNombre + '.pdf');
+        resultado.pdf_nombre = pdfNombre;
+        resultado.pdf_existe = fs.existsSync(pdfPath);
+      }
     }
 
     // Validate NIT against terceros table
@@ -193,6 +201,29 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
     if (req.file && req.file.path) fs.unlink(req.file.path, () => {});
   }
   // Note: temp file is kept for deferred save on registration
+});
+
+// Save PDF only (for existing resolutions that don't have a PDF)
+router.post('/guardar-pdf', async (req, res) => {
+  const { pdf_temp, fecha_resolucion, numero_resolucion } = req.body;
+  if (!pdf_temp || !fecha_resolucion || !numero_resolucion) {
+    return res.status(400).json({ error: 'Faltan datos para guardar el PDF.' });
+  }
+  try {
+    const tmpPath = path.join(__dirname, '..', 'tmp', pdf_temp);
+    if (!fs.existsSync(tmpPath)) {
+      return res.status(404).json({ error: 'El archivo temporal ya no existe. Por favor cargue el PDF de nuevo.' });
+    }
+    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+    if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
+    const destName = `${fecha_resolucion}-${numero_resolucion}.pdf`;
+    const destPath = path.join(pdfsDir, destName);
+    fs.copyFileSync(tmpPath, destPath);
+    fs.unlink(tmpPath, () => {});
+    res.json({ ok: true, nombre: destName });
+  } catch (e) {
+    res.status(500).json({ error: 'Error al guardar el PDF: ' + e.message });
+  }
 });
 
 // List all
@@ -260,6 +291,13 @@ router.get('/', async (req, res) => {
 router.get('/nueva', (req, res) => {
   const message = req.session.message || null;
   req.session.message = null;
+  // Clean up any leftover temp files
+  const tmpDir = path.join(__dirname, '..', 'tmp');
+  if (fs.existsSync(tmpDir)) {
+    fs.readdir(tmpDir, (err, files) => {
+      if (!err) files.forEach(f => fs.unlink(path.join(tmpDir, f), () => {}));
+    });
+  }
   res.render('form', { resolucion: null, action: '/resoluciones', method: 'POST', title: 'Nueva Resolución', message });
 });
 
@@ -297,10 +335,11 @@ router.post('/', async (req, res) => {
     }
 
     req.session.message = { type: 'success', text: 'Resolución registrada exitosamente.' };
+    res.redirect('/resoluciones/nueva');
   } catch (e) {
     req.session.message = { type: 'error', text: 'Error al registrar: ' + e.message };
+    res.redirect('/resoluciones/nueva');
   }
-  res.redirect('/resoluciones');
 });
 
 // Show detail
