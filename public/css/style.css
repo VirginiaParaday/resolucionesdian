@@ -251,7 +251,7 @@ body {
 .filter-group select {
   padding: 8px 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   font-family: inherit;
   font-size: 13px;
   color: var(--text);
@@ -701,7 +701,7 @@ td {
 .form-group textarea {
   padding: 9px 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   font-family: inherit;
   font-size: 13px;
   color: var(--text);
@@ -744,7 +744,7 @@ td {
   flex: 1;
   padding: 9px 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   font-family: inherit;
   font-size: 13px;
   color: var(--text);

@@ -139,8 +139,22 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <% resoluciones.forEach((r, i)=> { %>
-                        <tr>
+                      <% resoluciones.forEach((r, i)=> {
+                        // Calculate days until expiry for row coloring
+                        let _rowBg = '';
+                        const _vig = parseInt(r.vigencia);
+                        if (!isNaN(_vig) && r.fecha_resolucion) {
+                          const _hoy = new Date(); _hoy.setHours(0,0,0,0);
+                          const _fv = new Date(r.fecha_resolucion + 'T00:00:00');
+                          _fv.setMonth(_fv.getMonth() + _vig);
+                          const _diff = Math.ceil((_fv - _hoy) / (1000*60*60*24));
+                          if (_diff < 0) _rowBg = 'background:rgba(231,76,60,0.10);';       // Vencida
+                          else if (_diff === 0) _rowBg = 'background:rgba(192,57,43,0.15);';  // Vence hoy
+                          else if (_diff === 1) _rowBg = 'background:rgba(230,126,34,0.12);'; // 1 día
+                          else if (_diff <= 5) _rowBg = 'background:rgba(241,196,15,0.12);';  // ≤5 días
+                        }
+                      %>
+                        <tr style="<%= _rowBg %>">
                           <td class="td-num" style="color:var(--muted)">
                             <%= i + 1 %>
                           </td>
