@@ -228,6 +228,26 @@
 
             <!-- Result area -->
             <div id="pdfResult" style="display:none"></div>
+
+            <!-- Multi-upload button -->
+            <div style="text-align:center;margin-top:16px">
+              <button type="button" class="btn btn-ghost" id="btnMultiUpload" style="font-size:13px;color:#3167CA;border-color:#3167CA">
+                📑 Subir varias resoluciones
+              </button>
+            </div>
+
+            <!-- Multi-upload panel (hidden by default) -->
+            <div id="multiUploadPanel" style="display:none;margin-top:16px;border:2px dashed #cbd5e1;border-radius:12px;padding:20px;background:#FAFCFF">
+              <div style="text-align:center;margin-bottom:12px">
+                <div style="font-weight:600;color:#1e3a5f;font-size:14px">📑 Subir varias resoluciones</div>
+                <div style="font-size:12px;color:#888;margin-top:4px">Arrastre o seleccione varios PDF del Formulario 1876</div>
+              </div>
+              <div id="multiDropZone" style="border:2px dashed #d1d5db;border-radius:8px;padding:30px;text-align:center;cursor:pointer;transition:all 0.2s;background:white">
+                <div style="font-size:13px;color:#555">Arrastre los PDF aquí o haga clic para seleccionar</div>
+                <input type="file" id="multiFileInput" accept=".pdf" multiple style="display:none">
+              </div>
+              <div id="multiResultList" style="margin-top:12px;display:none"></div>
+            </div>
           </div>
           <% } %>
 
@@ -748,7 +768,96 @@
                 mostrarResultado('error', `❌ Error al procesar: ${err.message}`);
               });
           }
+
+          // ===== MULTI-PDF UPLOAD LOGIC =====
+          const btnMulti = document.getElementById('btnMultiUpload');
+          const multiPanel = document.getElementById('multiUploadPanel');
+          const multiDrop = document.getElementById('multiDropZone');
+          const multiInput = document.getElementById('multiFileInput');
+          const multiResult = document.getElementById('multiResultList');
+
+          if (btnMulti) {
+            btnMulti.addEventListener('click', (e) => {
+              e.preventDefault();
+              multiPanel.style.display = multiPanel.style.display === 'none' ? 'block' : 'none';
+            });
+
+            multiDrop.addEventListener('click', () => multiInput.click());
+
+            ['dragenter', 'dragover'].forEach(evt => {
+              multiDrop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); multiDrop.style.borderColor = '#3167CA'; multiDrop.style.background = '#EBF0FF'; });
+            });
+            ['dragleave', 'drop'].forEach(evt => {
+              multiDrop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); multiDrop.style.borderColor = '#d1d5db'; multiDrop.style.background = 'white'; });
+            });
+
+            multiDrop.addEventListener('drop', (e) => {
+              const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+              if (files.length > 0) procesarMulti(files);
+            });
+
+            multiInput.addEventListener('change', () => {
+              const files = Array.from(multiInput.files).filter(f => f.type === 'application/pdf');
+              if (files.length > 0) procesarMulti(files);
+              multiInput.value = '';
+            });
+
+            function procesarMulti(files) {
+              multiResult.style.display = 'block';
+              multiResult.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:13px">⏳ Validando ' + files.length + ' PDF(s)...</div>';
+              const fd = new FormData();
+              files.forEach(f => fd.append('pdfs', f));
+
+              fetch('/resoluciones/validar-pdfs', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                  if (!data.ok) { multiResult.innerHTML = '<div style="color:red;font-size:13px">❌ ' + (data.error || 'Error') + '</div>'; return; }
+                  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">';
+                  html += '<thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Archivo</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Nº Resolución</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Estado</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Acción</th></tr></thead><tbody>';
+                  data.resultados.forEach((r, idx) => {
+                    let estado = '', accion = '';
+                    if (r.resolucion_existe && r.pdf_existe) {
+                      estado = '<span style="color:#27AE60">✅ Registrada + PDF</span>';
+                      accion = '<span style="color:#aaa">—</span>';
+                    } else if (r.resolucion_existe && !r.pdf_existe) {
+                      estado = '<span style="color:#E67E22">⚠️ Sin archivo PDF</span>';
+                      accion = '<button type="button" class="btn btn-sm" id="multiSave_' + idx + '" style="background:#E67E22;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiPdf(\'' + r.temp + '\', \'' + r.numero_formulario + '\', this)">Guardar</button>';
+                    } else {
+                      estado = '<span style="color:#e74c3c">❌ No registrada</span>';
+                      accion = '<span style="color:#aaa">—</span>';
+                    }
+                    html += '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 8px">' + r.archivo + '</td><td style="padding:6px 8px;font-family:monospace">' + r.numero_formulario + '</td><td style="padding:6px 8px;text-align:center">' + estado + '</td><td style="padding:6px 8px;text-align:center">' + accion + '</td></tr>';
+                  });
+                  html += '</tbody></table>';
+                  multiResult.innerHTML = html;
+                })
+                .catch(() => { multiResult.innerHTML = '<div style="color:red;font-size:13px">❌ Error de conexión</div>'; });
+            }
+          }
         });
+
+        // Global function for multi-save buttons
+        function guardarMultiPdf(tempFile, numResolucion, btn) {
+          btn.disabled = true;
+          btn.textContent = '⏳...';
+          fetch('/resoluciones/subir-pdf-temp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdf_temp: tempFile, numero_resolucion: numResolucion })
+          })
+            .then(r => r.json())
+            .then(data => {
+              if (data.ok) {
+                btn.textContent = '✅ Guardado';
+                btn.style.background = '#27AE60';
+              } else {
+                btn.textContent = '❌ Error';
+                btn.disabled = false;
+                alert(data.error);
+              }
+            })
+            .catch(() => { btn.textContent = '❌ Error'; btn.disabled = false; });
+        }
       </script>
 </body>
 
