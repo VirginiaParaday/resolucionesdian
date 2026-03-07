@@ -76,17 +76,17 @@ function extraerDatosFormulario(texto) {
   let modalidad = '', prefijo = '', desde = '', hasta = '', solicitud = '', vigencia = '';
   let establecimiento = '';
 
-  // Pattern A: full modalidad name WITH prefijo on one line
-  const patternA = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+  // Pattern A: full modalidad name WITH prefijo on one line (vigencia optional)
+  const patternA = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)(?:[\s\t]+(\d+))?/i;
 
-  // Pattern B: truncated modalidad WITH prefijo on one line
-  const patternB = /(PAPEL|COMPUTADOR|SOPORTE|ELECTR[ÓO]NICA|TALONARIO)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+  // Pattern B: truncated modalidad WITH prefijo on one line (vigencia optional)
+  const patternB = /(PAPEL|COMPUTADOR|SOPORTE|ELECTR[ÓO]NICA|TALONARIO)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)(?:[\s\t]+(\d+))?/i;
 
-  // Pattern A2: full modalidad WITHOUT prefijo (e.g. "FACTURACIÓN COMPUTADOR 3 1 500 AUTORIZACIÓN 1  12")
-  const patternA2 = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+  // Pattern A2: full modalidad WITHOUT prefijo (vigencia optional)
+  const patternA2 = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)(?:[\s\t]+(\d+))?/i;
 
-  // Pattern B2: truncated modalidad WITHOUT prefijo (e.g. "PAPEL 1 16501 18750 AUTORIZACIÓN 1  12")
-  const patternB2 = /(PAPEL|COMPUTADOR|SOPORTE|ELECTR[ÓO]NICA|TALONARIO)\s+(\d+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+  // Pattern B2: truncated modalidad WITHOUT prefijo (vigencia optional)
+  const patternB2 = /(PAPEL|COMPUTADOR|SOPORTE|ELECTR[ÓO]NICA|TALONARIO)\s+(\d+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)(?:[\s\t]+(\d+))?/i;
 
   let dataMatch = texto.match(patternA);
   let hasPrefijo = true;
@@ -97,22 +97,21 @@ function extraerDatosFormulario(texto) {
   if (dataMatch) {
     modalidad = mapearModalidad(dataMatch[1].trim());
     if (hasPrefijo) {
-      // Groups: 1=modalidad, 2=cod, 3=prefijo, 4=desde, 5=hasta, 6=solicitud, 7=cod2, 8=vigencia
+      // Groups: 1=modalidad, 2=cod, 3=prefijo, 4=desde, 5=hasta, 6=solicitud, 7=cod2, 8=vigencia(optional)
       prefijo = dataMatch[3].trim();
       desde = dataMatch[4].trim().replace(/,/g, '');
       hasta = dataMatch[5].trim().replace(/,/g, '');
       solicitud = mapearSolicitud(dataMatch[6].trim());
-      vigencia = dataMatch[8].trim();
+      vigencia = (dataMatch[8] || '').trim();
     } else {
-      // Groups: 1=modalidad, 2=cod, 3=desde, 4=hasta, 5=solicitud, 6=cod2, 7=vigencia
+      // Groups: 1=modalidad, 2=cod, 3=desde, 4=hasta, 5=solicitud, 6=cod2, 7=vigencia(optional)
       desde = dataMatch[3].trim().replace(/,/g, '');
       hasta = dataMatch[4].trim().replace(/,/g, '');
       solicitud = mapearSolicitud(dataMatch[5].trim());
-      vigencia = dataMatch[7].trim();
+      vigencia = (dataMatch[7] || '').trim();
     }
 
     // ESTABLECIMIENTO — line before the data row
-    const usedPattern = texto.match(patternA) || texto.match(patternB) || texto.match(patternA2) || texto.match(patternB2);
     const matchedPattern = texto.match(patternA) ? patternA : texto.match(patternB) ? patternB : texto.match(patternA2) ? patternA2 : patternB2;
     const dataLineIdx = lines.findIndex(l => matchedPattern.test(l));
     if (dataLineIdx > 0) {
@@ -201,11 +200,17 @@ function extraerDatosFormulario(texto) {
     }
   }
 
-  // 4. NÚMERO DE FORMULARIO
+  // 4. NÚMERO DE FORMULARIO — long digit string (12+ digits)
+  // Some older PDFs concatenate the form type "1876" with the actual number, e.g. "187618762003231498"
   let numero_formulario = '';
   for (const line of lines) {
     if (/^\d{12,}$/.test(line)) {
-      numero_formulario = line;
+      let num = line;
+      // Strip leading "1876" prefix if duplicated (e.g. "187618762003231498" → "18762003231498")
+      if (num.startsWith('1876') && num.length > 14 && num.substring(4).startsWith('1876')) {
+        num = num.substring(4);
+      }
+      numero_formulario = num;
       break;
     }
   }
