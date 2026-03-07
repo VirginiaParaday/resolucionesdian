@@ -802,6 +802,7 @@
               multiInput.value = '';
             });
 
+
             function procesarMulti(files) {
               multiResult.style.display = 'block';
               multiResult.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:13px">⏳ Validando ' + files.length + ' PDF(s)...</div>';
@@ -812,6 +813,7 @@
                 .then(r => r.json())
                 .then(data => {
                   if (!data.ok) { multiResult.innerHTML = '<div style="color:red;font-size:13px">❌ ' + (data.error || 'Error') + '</div>'; return; }
+                  multiResultData = data.resultados;
                   let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">';
                   html += '<thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Archivo</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Nº Resolución</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Estado</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Acción</th></tr></thead><tbody>';
                   data.resultados.forEach((r, idx) => {
@@ -821,10 +823,10 @@
                       accion = '<span style="color:#aaa">—</span>';
                     } else if (r.resolucion_existe && !r.pdf_existe) {
                       estado = '<span style="color:#E67E22">⚠️ Sin archivo PDF</span>';
-                      accion = '<button type="button" class="btn btn-sm" id="multiSave_' + idx + '" style="background:#E67E22;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiPdf(\'' + r.temp + '\', \'' + r.numero_formulario + '\', this)">Guardar</button>';
+                      accion = '<button type="button" class="btn btn-sm" id="multiSave_' + idx + '" style="background:#E67E22;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiPdf(\'' + r.temp + '\', \'' + r.numero_formulario + '\', this)">💾 Guardar PDF</button>';
                     } else {
-                      estado = '<span style="color:#e74c3c">❌ No registrada</span>';
-                      accion = '<span style="color:#aaa">—</span>';
+                      estado = '<span style="color:#3167CA">📄 Nueva resolución</span>';
+                      accion = '<button type="button" class="btn btn-sm" id="multiSaveNew_' + idx + '" style="background:#3167CA;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiResolucion(' + idx + ', this)">💾 Guardar</button>';
                     }
                     html += '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 8px">' + r.archivo + '</td><td style="padding:6px 8px;font-family:monospace">' + r.numero_formulario + '</td><td style="padding:6px 8px;text-align:center">' + estado + '</td><td style="padding:6px 8px;text-align:center">' + accion + '</td></tr>';
                   });
@@ -836,7 +838,7 @@
           }
         });
 
-        // Global function for multi-save buttons
+        // Global function for multi-save buttons (existing resolution, missing PDF only)
         function guardarMultiPdf(tempFile, numResolucion, btn) {
           btn.disabled = true;
           btn.textContent = '⏳...';
@@ -846,6 +848,46 @@
             body: JSON.stringify({ pdf_temp: tempFile, numero_resolucion: numResolucion })
           })
             .then(r => r.json())
+            .then(data => {
+              if (data.ok) {
+                btn.textContent = '✅ Guardado';
+                btn.style.background = '#27AE60';
+              } else {
+                btn.textContent = '❌ Error';
+                btn.disabled = false;
+                alert(data.error);
+              }
+            })
+            .catch(() => { btn.textContent = '❌ Error'; btn.disabled = false; });
+        }
+
+        let multiResultData = []; // store full result data per row
+
+        // Global function for multi-save buttons (new resolution — create + save PDF)
+        function guardarMultiResolucion(idx, btn) {
+          const r = (typeof multiResultData !== 'undefined') ? multiResultData[idx] : null;
+          if (!r) { alert('Error: datos no disponibles'); return; }
+          btn.disabled = true;
+          btn.textContent = '⏳...';
+          fetch('/resoluciones/guardar-resolucion-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pdf_temp: r.temp,
+              nit: r.nit || '',
+              nombre_tercero: r.nombre_tercero || '',
+              fecha_resolucion: r.fecha_resolucion || '',
+              numero_resolucion: r.numero_formulario || '',
+              modalidad: r.modalidad || '',
+              solicitud: r.solicitud || '',
+              prefijo: r.prefijo || '',
+              desde: r.desde || '',
+              hasta: r.hasta || '',
+              vigencia: r.vigencia || '',
+              establecimiento: r.establecimiento || ''
+            })
+          })
+            .then(resp => resp.json())
             .then(data => {
               if (data.ok) {
                 btn.textContent = '✅ Guardado';

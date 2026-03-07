@@ -96,14 +96,14 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
     let modalidad = '', prefijo = '', desde = '', hasta = '', solicitud = '', vigencia = '';
     let establecimiento = '';
 
-    const dataPattern = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)\s+(\d+)/i;
+    const dataPattern = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
     const dataMatch2 = texto.match(dataPattern);
 
     if (dataMatch2) {
       modalidad = mapearModalidad(dataMatch2[1].trim());
       prefijo = dataMatch2[3].trim();
-      desde = dataMatch2[4].trim();
-      hasta = dataMatch2[5].trim();
+      desde = dataMatch2[4].trim().replace(/,/g, '');
+      hasta = dataMatch2[5].trim().replace(/,/g, '');
       solicitud = mapearSolicitud(dataMatch2[6].trim());
       vigencia = dataMatch2[8].trim();
 
@@ -203,7 +203,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
   // Note: temp file is kept for deferred save on registration
 });
 
-// POST /resoluciones/validar-pdfs — Validate multiple PDFs at once
+// POST /resoluciones/validar-pdfs — Validate multiple PDFs at once (full extraction)
 router.post('/validar-pdfs', uploadPdf.array('pdfs', 50), async (req, res) => {
   const resultados = [];
   try {
@@ -214,13 +214,77 @@ router.post('/validar-pdfs', uploadPdf.array('pdfs', 50), async (req, res) => {
         const pdfData = await parser.getText();
         await parser.destroy();
         const texto = pdfData.text || '';
-
-        // Extract numero_formulario
-        let numFormulario = '';
         const rawLines = texto.split(/\r?\n|\r/);
+        const lines = rawLines.map(l => l.trim()).filter(l => l.length > 0);
+
+        // 1. NIT
+        let nit = '', dv = '';
         for (const rawLine of rawLines) {
           const l = rawLine.trim();
-          if (/^\d{12,}$/.test(l)) { numFormulario = l; break; }
+          if (/^\d( \d){7,11}$/.test(l)) {
+            const cleaned = l.replace(/\s+/g, '');
+            if (cleaned.length >= 8 && cleaned.length <= 12) {
+              nit = cleaned.slice(0, -1);
+              dv = cleaned.slice(-1);
+              break;
+            }
+          }
+        }
+
+        // 2. DATE
+        let fecha_resolucion = '';
+        const dateMatch = texto.match(/(\d{4}-\d{2}-\d{2})\s*\/\s*\d{2}:\d{2}:\d{2}/);
+        if (dateMatch) {
+          fecha_resolucion = dateMatch[1];
+        } else {
+          const spacedDate = texto.match(/(\d\s+\d\s+\d\s+\d)\s*-\s*(\d\s+\d)\s*-\s*(\d\s+\d)/);
+          if (spacedDate) {
+            const y = spacedDate[1].replace(/\s+/g, '');
+            const mo = spacedDate[2].replace(/\s+/g, '');
+            const d = spacedDate[3].replace(/\s+/g, '');
+            fecha_resolucion = `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+          }
+        }
+
+        // 3. DATA ROW
+        let modalidad = '', prefijo = '', desde = '', hasta = '', solicitud = '', vigencia = '';
+        let establecimiento = '';
+        const dataPattern = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+        const dataMatch2 = texto.match(dataPattern);
+
+        if (dataMatch2) {
+          modalidad = mapearModalidad(dataMatch2[1].trim());
+          prefijo = dataMatch2[3].trim();
+          desde = dataMatch2[4].trim().replace(/,/g, '');
+          hasta = dataMatch2[5].trim().replace(/,/g, '');
+          solicitud = mapearSolicitud(dataMatch2[6].trim());
+          vigencia = dataMatch2[8].trim();
+
+          // ESTABLECIMIENTO — line before the data row
+          const dataLineIdx = lines.findIndex(l => dataPattern.test(l));
+          if (dataLineIdx > 0) {
+            const prevLine = lines[dataLineIdx - 1];
+            if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !prevLine.includes('Establecimiento')) {
+              establecimiento = prevLine;
+            }
+          }
+        }
+
+        // 4. NÚMERO DE FORMULARIO
+        let numFormulario = '';
+        for (const line of lines) {
+          if (/^\d{12,}$/.test(line)) { numFormulario = line; break; }
+        }
+
+        // 5. Lookup tercero for nombre
+        let nombre_tercero = '';
+        if (nit) {
+          const tercero = await db.getAsync('SELECT * FROM terceros WHERE nit = ?', [nit]);
+          if (tercero) {
+            nombre_tercero = tercero.tipo_persona === 'Juridica'
+              ? (tercero.razon_social || '')
+              : [tercero.primer_nombre, tercero.segundo_nombre, tercero.primer_apellido, tercero.segundo_apellido].filter(Boolean).join(' ');
+          }
         }
 
         // Check DB
@@ -239,6 +303,16 @@ router.post('/validar-pdfs', uploadPdf.array('pdfs', 50), async (req, res) => {
           archivo: file.originalname,
           temp: path.basename(file.path),
           numero_formulario: numFormulario || 'No detectado',
+          nit: nit + (dv ? '-' + dv : ''),
+          nombre_tercero,
+          fecha_resolucion,
+          modalidad,
+          solicitud,
+          prefijo,
+          desde,
+          hasta,
+          vigencia,
+          establecimiento,
           resolucion_existe: existe,
           pdf_existe: pdfExiste,
           pdf_nombre: pdfNombre
@@ -258,6 +332,42 @@ router.post('/validar-pdfs', uploadPdf.array('pdfs', 50), async (req, res) => {
     res.json({ ok: true, resultados });
   } catch (e) {
     res.status(500).json({ error: 'Error al procesar PDFs: ' + e.message });
+  }
+});
+
+// POST /resoluciones/guardar-resolucion-pdf — Create resolution + save PDF from multi-upload
+router.post('/guardar-resolucion-pdf', async (req, res) => {
+  const { pdf_temp, nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, desde, hasta, vigencia, establecimiento } = req.body;
+  if (!numero_resolucion || !pdf_temp) {
+    return res.status(400).json({ error: 'Faltan datos requeridos.' });
+  }
+  try {
+    // Check duplicate
+    const existe = await db.getAsync('SELECT id FROM resoluciones WHERE numero_resolucion = ?', [numero_resolucion]);
+    if (existe) {
+      return res.status(409).json({ error: `Ya existe una resolución con el número ${numero_resolucion}.` });
+    }
+
+    // Insert resolution
+    await db.runAsync(
+      `INSERT INTO resoluciones (nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, sucursal, desde, hasta, vigencia)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nit || '', nombre_tercero || '', fecha_resolucion || '', numero_resolucion, modalidad || '', solicitud || '', prefijo || '', establecimiento || '', desde || '', hasta || '', vigencia || '']
+    );
+
+    // Save PDF
+    const tmpPath = path.join(__dirname, '..', 'tmp', pdf_temp);
+    if (fs.existsSync(tmpPath)) {
+      const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+      if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
+      const destName = `${fecha_resolucion || 'sin-fecha'}-${numero_resolucion}.pdf`;
+      fs.copyFileSync(tmpPath, path.join(pdfsDir, destName));
+      fs.unlink(tmpPath, () => {});
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Error al guardar: ' + e.message });
   }
 });
 
