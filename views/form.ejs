@@ -816,6 +816,7 @@
                   multiResultData = data.resultados;
                   let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">';
                   html += '<thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Archivo</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Nº Resolución</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Estado</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Acción</th></tr></thead><tbody>';
+                  let pendingCount = 0;
                   data.resultados.forEach((r, idx) => {
                     let estado = '', accion = '';
                     if (r.resolucion_existe && r.pdf_existe) {
@@ -823,14 +824,20 @@
                       accion = '<span style="color:#aaa">—</span>';
                     } else if (r.resolucion_existe && !r.pdf_existe) {
                       estado = '<span style="color:#E67E22">⚠️ Sin archivo PDF</span>';
-                      accion = '<button type="button" class="btn btn-sm" id="multiSave_' + idx + '" style="background:#E67E22;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiPdf(\'' + r.temp + '\', \'' + r.numero_formulario + '\', this)">💾 Guardar PDF</button>';
+                      accion = '<button type="button" class="btn btn-sm multi-save-btn" data-type="pdf" data-idx="' + idx + '" id="multiSave_' + idx + '" style="background:#E67E22;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiPdf(\'' + r.temp + '\', \'' + r.numero_formulario + '\', this)">💾 Guardar PDF</button>';
+                      pendingCount++;
                     } else {
                       estado = '<span style="color:#3167CA">📄 Nueva resolución</span>';
-                      accion = '<button type="button" class="btn btn-sm" id="multiSaveNew_' + idx + '" style="background:#3167CA;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiResolucion(' + idx + ', this)">💾 Guardar</button>';
+                      accion = '<button type="button" class="btn btn-sm multi-save-btn" data-type="new" data-idx="' + idx + '" id="multiSaveNew_' + idx + '" style="background:#3167CA;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiResolucion(' + idx + ', this)">💾 Guardar</button>';
+                      pendingCount++;
                     }
                     html += '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 8px">' + r.archivo + '</td><td style="padding:6px 8px;font-family:monospace">' + r.numero_formulario + '</td><td style="padding:6px 8px;text-align:center">' + estado + '</td><td style="padding:6px 8px;text-align:center">' + accion + '</td></tr>';
                   });
                   html += '</tbody></table>';
+                  // Add "Guardar todos" button if there are pending items
+                  if (pendingCount > 1) {
+                    html += '<div style="text-align:right;margin-top:12px"><button type="button" id="btnGuardarTodos" style="background:linear-gradient(135deg,#3167CA,#1e4fa0);color:white;border:none;padding:8px 24px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(49,103,202,0.3);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 4px 12px rgba(49,103,202,0.4)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 2px 8px rgba(49,103,202,0.3)\'" onclick="guardarTodos(this)">💾 Guardar todos (' + pendingCount + ')</button></div>';
+                  }
                   multiResult.innerHTML = html;
                 })
                 .catch(() => { multiResult.innerHTML = '<div style="color:red;font-size:13px">❌ Error de conexión</div>'; });
@@ -899,6 +906,68 @@
               }
             })
             .catch(() => { btn.textContent = '❌ Error'; btn.disabled = false; });
+        }
+
+        // Global function: save ALL pending items sequentially
+        async function guardarTodos(masterBtn) {
+          masterBtn.disabled = true;
+          masterBtn.textContent = '⏳ Guardando...';
+          const buttons = document.querySelectorAll('.multi-save-btn:not([disabled])');
+          let saved = 0, errors = 0;
+
+          for (const btn of buttons) {
+            const type = btn.dataset.type;
+            const idx = parseInt(btn.dataset.idx);
+            try {
+              if (type === 'pdf') {
+                // Existing resolution, save PDF only
+                const r = multiResultData[idx];
+                btn.disabled = true;
+                btn.textContent = '⏳...';
+                const resp = await fetch('/resoluciones/subir-pdf-temp', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ pdf_temp: r.temp, numero_resolucion: r.numero_formulario })
+                });
+                const data = await resp.json();
+                if (data.ok) { btn.textContent = '✅ Guardado'; btn.style.background = '#27AE60'; saved++; }
+                else { btn.textContent = '❌ Error'; btn.disabled = false; errors++; }
+              } else if (type === 'new') {
+                // New resolution — create + save PDF
+                const r = multiResultData[idx];
+                btn.disabled = true;
+                btn.textContent = '⏳...';
+                const resp = await fetch('/resoluciones/guardar-resolucion-pdf', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    pdf_temp: r.temp,
+                    nit: r.nit || '', nombre_tercero: r.nombre_tercero || '',
+                    fecha_resolucion: r.fecha_resolucion || '', numero_resolucion: r.numero_formulario || '',
+                    modalidad: r.modalidad || '', solicitud: r.solicitud || '',
+                    prefijo: r.prefijo || '', desde: r.desde || '', hasta: r.hasta || '',
+                    vigencia: r.vigencia || '', establecimiento: r.establecimiento || ''
+                  })
+                });
+                const data = await resp.json();
+                if (data.ok) { btn.textContent = '✅ Guardado'; btn.style.background = '#27AE60'; saved++; }
+                else { btn.textContent = '❌ Error'; btn.disabled = false; errors++; }
+              }
+            } catch (e) {
+              btn.textContent = '❌ Error';
+              btn.disabled = false;
+              errors++;
+            }
+          }
+
+          if (errors === 0) {
+            masterBtn.textContent = '✅ Todos guardados (' + saved + ')';
+            masterBtn.style.background = '#27AE60';
+          } else {
+            masterBtn.textContent = '⚠️ ' + saved + ' guardados, ' + errors + ' errores';
+            masterBtn.style.background = '#E67E22';
+            masterBtn.disabled = false;
+          }
         }
       </script>
 </body>
