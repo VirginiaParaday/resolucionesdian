@@ -34,7 +34,183 @@ function mapearModalidad(valor) {
   if (v.includes('pos') || v.includes('d.e')) return 'D.E. / P.O.S.';
   if (v.includes('soporte')) return 'Documento soporte';
   if (v.includes('facturaci') && v.includes('papel')) return 'Facturación de papel';
+  if (/^papel$/i.test(v.trim())) return 'Factura de talonario o de papel';
   return valor;
+}
+
+// Shared function: extract all form fields from PDF text
+function extraerDatosFormulario(texto) {
+  const rawLines = texto.split(/\r?\n|\r/);
+  const lines = rawLines.map(l => l.trim()).filter(l => l.length > 0);
+
+  // 1. NIT + DV
+  let nit = '', dv = '';
+  for (const rawLine of rawLines) {
+    const l = rawLine.trim();
+    if (/^\d( \d){7,11}$/.test(l)) {
+      const cleaned = l.replace(/\s+/g, '');
+      if (cleaned.length >= 8 && cleaned.length <= 12) {
+        nit = cleaned.slice(0, -1);
+        dv = cleaned.slice(-1);
+        break;
+      }
+    }
+  }
+
+  // 2. DATE
+  let fecha_resolucion = '';
+  const dateMatch = texto.match(/(\d{4}-\d{2}-\d{2})\s*\/\s*\d{2}:\d{2}:\d{2}/);
+  if (dateMatch) {
+    fecha_resolucion = dateMatch[1];
+  } else {
+    const spacedDate = texto.match(/(\d\s+\d\s+\d\s+\d)\s*-\s*(\d\s+\d)\s*-\s*(\d\s+\d)/);
+    if (spacedDate) {
+      const y = spacedDate[1].replace(/\s+/g, '');
+      const mo = spacedDate[2].replace(/\s+/g, '');
+      const d = spacedDate[3].replace(/\s+/g, '');
+      fecha_resolucion = `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+  }
+
+  // 3. DATA ROW — try multiple regex patterns
+  let modalidad = '', prefijo = '', desde = '', hasta = '', solicitud = '', vigencia = '';
+  let establecimiento = '';
+
+  // Pattern A: full modalidad name WITH prefijo on one line
+  const patternA = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+
+  // Pattern B: truncated modalidad WITH prefijo on one line
+  const patternB = /(PAPEL|COMPUTADOR|SOPORTE|ELECTR[ÓO]NICA|TALONARIO)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+
+  // Pattern A2: full modalidad WITHOUT prefijo (e.g. "FACTURACIÓN COMPUTADOR 3 1 500 AUTORIZACIÓN 1  12")
+  const patternA2 = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+
+  // Pattern B2: truncated modalidad WITHOUT prefijo (e.g. "PAPEL 1 16501 18750 AUTORIZACIÓN 1  12")
+  const patternB2 = /(PAPEL|COMPUTADOR|SOPORTE|ELECTR[ÓO]NICA|TALONARIO)\s+(\d+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
+
+  let dataMatch = texto.match(patternA);
+  let hasPrefijo = true;
+  if (!dataMatch) { dataMatch = texto.match(patternB); }
+  if (!dataMatch) { dataMatch = texto.match(patternA2); hasPrefijo = false; }
+  if (!dataMatch) { dataMatch = texto.match(patternB2); hasPrefijo = false; }
+
+  if (dataMatch) {
+    modalidad = mapearModalidad(dataMatch[1].trim());
+    if (hasPrefijo) {
+      // Groups: 1=modalidad, 2=cod, 3=prefijo, 4=desde, 5=hasta, 6=solicitud, 7=cod2, 8=vigencia
+      prefijo = dataMatch[3].trim();
+      desde = dataMatch[4].trim().replace(/,/g, '');
+      hasta = dataMatch[5].trim().replace(/,/g, '');
+      solicitud = mapearSolicitud(dataMatch[6].trim());
+      vigencia = dataMatch[8].trim();
+    } else {
+      // Groups: 1=modalidad, 2=cod, 3=desde, 4=hasta, 5=solicitud, 6=cod2, 7=vigencia
+      desde = dataMatch[3].trim().replace(/,/g, '');
+      hasta = dataMatch[4].trim().replace(/,/g, '');
+      solicitud = mapearSolicitud(dataMatch[5].trim());
+      vigencia = dataMatch[7].trim();
+    }
+
+    // ESTABLECIMIENTO — line before the data row
+    const usedPattern = texto.match(patternA) || texto.match(patternB) || texto.match(patternA2) || texto.match(patternB2);
+    const matchedPattern = texto.match(patternA) ? patternA : texto.match(patternB) ? patternB : texto.match(patternA2) ? patternA2 : patternB2;
+    const dataLineIdx = lines.findIndex(l => matchedPattern.test(l));
+    if (dataLineIdx > 0) {
+      const prevLine = lines[dataLineIdx - 1];
+      if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !prevLine.includes('Establecimiento')) {
+        establecimiento = prevLine;
+      }
+    }
+  } else {
+    // Pattern C: data split across multiple lines (e.g. "FACTURA ELECTRÓNICA DE VENTA 4", then "FE", "2,251", "10,000", "AUTORIZACIÓN 1", "12")
+    // Find modalidad line
+    const modalidadPatterns = [
+      /^(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA)\s+\d+$/i,
+      /^(DOCUMENTO\s+SOPORTE)\s+\d+$/i,
+      /^(FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR)\s+\d+$/i,
+      /^(FACTURACI[ÓO]N\s+DE\s+PAPEL)\s+\d+$/i,
+      /^(FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+\d+$/i,
+      /^(D\.?E\.?\s*\/?\s*P\.?O\.?S\.?)\s+\d+$/i,
+      /^(PAPEL)\s+\d+$/i,
+      /^(COMPUTADOR)\s+\d+$/i,
+      /^(SOPORTE)\s+\d+$/i
+    ];
+
+    let modIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      for (const mp of modalidadPatterns) {
+        const m = lines[i].match(mp);
+        if (m) {
+          modalidad = mapearModalidad(m[1].trim());
+          modIdx = i;
+          break;
+        }
+      }
+      if (modIdx >= 0) break;
+    }
+
+    if (modIdx >= 0) {
+      // Collect remaining data lines after the modalidad line
+      // Look for: prefijo, desde, hasta, solicitud+cod, vigencia in subsequent lines
+      const afterLines = lines.slice(modIdx + 1);
+      const solicitudMatch = afterLines.findIndex(l => /AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N/i.test(l));
+
+      if (solicitudMatch >= 0) {
+        // Lines before solicitud are: prefijo, desde, hasta
+        const dataBeforeSolicitud = afterLines.slice(0, solicitudMatch);
+        // Lines after solicitud: vigencia
+        const solLine = afterLines[solicitudMatch];
+        const solMatch = solLine.match(/(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s*(\d*)/i);
+        if (solMatch) solicitud = mapearSolicitud(solMatch[1].trim());
+
+        // Vigencia is typically next numeric line after solicitud
+        for (let v = solicitudMatch + 1; v < afterLines.length && v <= solicitudMatch + 3; v++) {
+          if (/^\d+$/.test(afterLines[v])) {
+            vigencia = afterLines[v];
+            break;
+          }
+        }
+
+        // Parse prefijo/desde/hasta from data lines before solicitud
+        // Filter only meaningful data (not repeated modalidad lines, not "-- X of Y --")
+        const numericOrAlpha = dataBeforeSolicitud.filter(l => 
+          !modalidadPatterns.some(mp => mp.test(l)) && 
+          !/^--/.test(l) && 
+          !/^\d{12,}$/.test(l) &&
+          !/^\d\s+\d/.test(l) &&
+          l.length < 50
+        );
+
+        if (numericOrAlpha.length >= 3) {
+          prefijo = numericOrAlpha[0];
+          desde = numericOrAlpha[1].replace(/,/g, '');
+          hasta = numericOrAlpha[2].replace(/,/g, '');
+        } else if (numericOrAlpha.length === 2) {
+          desde = numericOrAlpha[0].replace(/,/g, '');
+          hasta = numericOrAlpha[1].replace(/,/g, '');
+        }
+      }
+
+      // ESTABLECIMIENTO — line before the modalidad line
+      if (modIdx > 0) {
+        const prevLine = lines[modIdx - 1];
+        if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !prevLine.includes('Establecimiento') && !/^\d\s+\d/.test(prevLine)) {
+          establecimiento = prevLine;
+        }
+      }
+    }
+  }
+
+  // 4. NÚMERO DE FORMULARIO
+  let numero_formulario = '';
+  for (const line of lines) {
+    if (/^\d{12,}$/.test(line)) {
+      numero_formulario = line;
+      break;
+    }
+  }
+
+  return { nit, dv, fecha_resolucion, modalidad, prefijo, desde, hasta, solicitud, vigencia, establecimiento, numero_formulario };
 }
 
 // POST /resoluciones/parsear-pdf — Parse a DIAN Form 1876 PDF
@@ -49,82 +225,14 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
     const data = await parser.getText();
     await parser.destroy();
     const texto = data.text || '';
-    const lines = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
     // DEBUG
     console.log('\n========== PDF TEXT START ==========');
     console.log(texto);
     console.log('========== PDF TEXT END ==========\n');
 
-    // ============ DIAN FORM 1876 PARSER ============
-
-    // 1. NIT + DV — spaced digits like "9 0 1 9 6 8 7 9 5 1"
-    //    The LAST digit is the DV (dígito de verificación), the rest is the NIT
-    let nit = '';
-    let dv = '';
-    const rawLines = texto.split(/\r?\n|\r/);
-    for (const rawLine of rawLines) {
-      const l = rawLine.trim();
-      // Match lines of ONLY single digits separated by spaces (8-12 digits total)
-      if (/^\d( \d){7,11}$/.test(l)) {
-        const cleaned = l.replace(/\s+/g, '');
-        if (cleaned.length >= 8 && cleaned.length <= 12) {
-          nit = cleaned.slice(0, -1); // All except last digit
-          dv = cleaned.slice(-1);     // Last digit is DV
-          break;
-        }
-      }
-    }
-
-    // 2. DATE — "2025-09-08 / 06:29:51 PM" or spaced
-    let fecha_resolucion = '';
-    const dateMatch = texto.match(/(\d{4}-\d{2}-\d{2})\s*\/\s*\d{2}:\d{2}:\d{2}/);
-    if (dateMatch) {
-      fecha_resolucion = dateMatch[1];
-    } else {
-      const spacedDate = texto.match(/(\d\s+\d\s+\d\s+\d)\s*-\s*(\d\s+\d)\s*-\s*(\d\s+\d)/);
-      if (spacedDate) {
-        const y = spacedDate[1].replace(/\s+/g, '');
-        const mo = spacedDate[2].replace(/\s+/g, '');
-        const d = spacedDate[3].replace(/\s+/g, '');
-        fecha_resolucion = `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
-      }
-    }
-
-    // 3. DATA ROW — all fields concatenated on one line:
-    //    "FACTURA ELECTRÓNICA DE VENTA 4 FV 1 200 AUTORIZACIÓN 1  24"
-    let modalidad = '', prefijo = '', desde = '', hasta = '', solicitud = '', vigencia = '';
-    let establecimiento = '';
-
-    const dataPattern = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
-    const dataMatch2 = texto.match(dataPattern);
-
-    if (dataMatch2) {
-      modalidad = mapearModalidad(dataMatch2[1].trim());
-      prefijo = dataMatch2[3].trim();
-      desde = dataMatch2[4].trim().replace(/,/g, '');
-      hasta = dataMatch2[5].trim().replace(/,/g, '');
-      solicitud = mapearSolicitud(dataMatch2[6].trim());
-      vigencia = dataMatch2[8].trim();
-
-      // 4. ESTABLECIMIENTO — line before the data row
-      const dataLineIdx = lines.findIndex(l => dataPattern.test(l));
-      if (dataLineIdx > 0) {
-        const prevLine = lines[dataLineIdx - 1];
-        if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !prevLine.includes('Establecimiento')) {
-          establecimiento = prevLine;
-        }
-      }
-    }
-
-    // 5. NÚMERO DE FORMULARIO — long digit string (12+ digits), e.g. "18764098346468"
-    let numero_formulario = '';
-    for (const line of lines) {
-      if (/^\d{12,}$/.test(line)) {
-        numero_formulario = line;
-        break;
-      }
-    }
+    // Extract all fields using the shared parser
+    const { nit, dv, fecha_resolucion, modalidad, prefijo, desde, hasta, solicitud, vigencia, establecimiento, numero_formulario } = extraerDatosFormulario(texto);
 
     console.log('Extracted:', { nit, fecha_resolucion, modalidad, prefijo, desde, hasta, solicitud, vigencia, establecimiento, numero_formulario });
 
@@ -214,69 +322,12 @@ router.post('/validar-pdfs', uploadPdf.array('pdfs', 50), async (req, res) => {
         const pdfData = await parser.getText();
         await parser.destroy();
         const texto = pdfData.text || '';
-        const rawLines = texto.split(/\r?\n|\r/);
-        const lines = rawLines.map(l => l.trim()).filter(l => l.length > 0);
 
-        // 1. NIT
-        let nit = '', dv = '';
-        for (const rawLine of rawLines) {
-          const l = rawLine.trim();
-          if (/^\d( \d){7,11}$/.test(l)) {
-            const cleaned = l.replace(/\s+/g, '');
-            if (cleaned.length >= 8 && cleaned.length <= 12) {
-              nit = cleaned.slice(0, -1);
-              dv = cleaned.slice(-1);
-              break;
-            }
-          }
-        }
+        // Extract all fields using the shared parser
+        const extracted = extraerDatosFormulario(texto);
+        const { nit, dv, fecha_resolucion, modalidad, prefijo, desde, hasta, solicitud, vigencia, establecimiento, numero_formulario: numFormulario } = extracted;
 
-        // 2. DATE
-        let fecha_resolucion = '';
-        const dateMatch = texto.match(/(\d{4}-\d{2}-\d{2})\s*\/\s*\d{2}:\d{2}:\d{2}/);
-        if (dateMatch) {
-          fecha_resolucion = dateMatch[1];
-        } else {
-          const spacedDate = texto.match(/(\d\s+\d\s+\d\s+\d)\s*-\s*(\d\s+\d)\s*-\s*(\d\s+\d)/);
-          if (spacedDate) {
-            const y = spacedDate[1].replace(/\s+/g, '');
-            const mo = spacedDate[2].replace(/\s+/g, '');
-            const d = spacedDate[3].replace(/\s+/g, '');
-            fecha_resolucion = `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
-          }
-        }
-
-        // 3. DATA ROW
-        let modalidad = '', prefijo = '', desde = '', hasta = '', solicitud = '', vigencia = '';
-        let establecimiento = '';
-        const dataPattern = /(FACTURA\s+ELECTR[ÓO]NICA\s+DE\s+VENTA|D\.?E\.?\s*\/?\s*P\.?O\.?S\.?|DOCUMENTO\s+SOPORTE|FACTURACI[ÓO]N\s+(?:DE\s+)?COMPUTADOR|FACTURACI[ÓO]N\s+DE\s+PAPEL|FACTURA\s+DE\s+TALONARIO(?:\s+O\s+DE\s+PAPEL)?)\s+(\d+)\s+(\S+)\s+([\d,.]+)\s+([\d,.]+)\s+(AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N)\s+(\d+)[\s\t]+(\d+)/i;
-        const dataMatch2 = texto.match(dataPattern);
-
-        if (dataMatch2) {
-          modalidad = mapearModalidad(dataMatch2[1].trim());
-          prefijo = dataMatch2[3].trim();
-          desde = dataMatch2[4].trim().replace(/,/g, '');
-          hasta = dataMatch2[5].trim().replace(/,/g, '');
-          solicitud = mapearSolicitud(dataMatch2[6].trim());
-          vigencia = dataMatch2[8].trim();
-
-          // ESTABLECIMIENTO — line before the data row
-          const dataLineIdx = lines.findIndex(l => dataPattern.test(l));
-          if (dataLineIdx > 0) {
-            const prevLine = lines[dataLineIdx - 1];
-            if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !prevLine.includes('Establecimiento')) {
-              establecimiento = prevLine;
-            }
-          }
-        }
-
-        // 4. NÚMERO DE FORMULARIO
-        let numFormulario = '';
-        for (const line of lines) {
-          if (/^\d{12,}$/.test(line)) { numFormulario = line; break; }
-        }
-
-        // 5. Lookup tercero for nombre
+        // Lookup tercero for nombre
         let nombre_tercero = '';
         if (nit) {
           const tercero = await db.getAsync('SELECT * FROM terceros WHERE nit = ?', [nit]);

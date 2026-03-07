@@ -106,7 +106,7 @@
                   <select name="modalidad" required>
                     <option value="">— Seleccione modalidad —</option>
                     <% const modalidades=[ 'D.E. / P.O.S.' , 'Documento soporte' , 'Facturación computador'
-                      , 'Facturación de papel' , 'Factura de talonario o de papel' , 'Factura electrónica de venta' ];
+                      , 'Facturación de papel' , 'Factura de talonario o de papel' , 'Factura electrónica de venta' , 'Papel' ];
                       %>
                       <% modalidades.forEach(m=> { %>
                         <option value="<%= m %>" <%=(resolucion && resolucion.modalidad===m) ? 'selected' : '' %>><%= m
