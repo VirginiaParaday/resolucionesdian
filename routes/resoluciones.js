@@ -226,6 +226,54 @@ router.post('/guardar-pdf', async (req, res) => {
   }
 });
 
+// Upload PDF for an existing resolution from the listing
+router.post('/subir-pdf/:id', uploadPdf.single('pdf'), async (req, res) => {
+  try {
+    const resolucion = await db.getAsync('SELECT fecha_resolucion, numero_resolucion FROM resoluciones WHERE id = ?', [req.params.id]);
+    if (!resolucion) {
+      if (req.file) fs.unlink(req.file.path, () => {});
+      return res.status(404).json({ error: 'Resolución no encontrada.' });
+    }
+
+    // Parse PDF to validate formulario number (same pattern as parsear-pdf)
+    const buffer = fs.readFileSync(req.file.path);
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const pdfData = await parser.getText();
+    await parser.destroy();
+    const texto = pdfData.text || '';
+
+    // Extract numero_formulario (12+ digit number on its own line)
+    let numFormulario = '';
+    const rawLines = texto.split(/\r?\n|\r/);
+    for (const rawLine of rawLines) {
+      const l = rawLine.trim();
+      if (/^\d{12,}$/.test(l)) { numFormulario = l; break; }
+    }
+
+    // Validate match
+    if (!numFormulario) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: 'No se pudo extraer el número de formulario del PDF.' });
+    }
+    if (numFormulario !== resolucion.numero_resolucion) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: `El PDF corresponde a la resolución ${numFormulario}, pero esta resolución es ${resolucion.numero_resolucion}.` });
+    }
+
+    // Save PDF
+    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+    if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
+    const destName = `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`;
+    const destPath = path.join(pdfsDir, destName);
+    fs.copyFileSync(req.file.path, destPath);
+    fs.unlink(req.file.path, () => {});
+    res.json({ ok: true, nombre: destName });
+  } catch (e) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    res.status(500).json({ error: 'Error al subir el PDF: ' + e.message });
+  }
+});
+
 // List all
 router.get('/', async (req, res) => {
   const search = req.query.search || '';
@@ -245,6 +293,12 @@ router.get('/', async (req, res) => {
 
   try {
     const resoluciones = await db.allAsync(query, params);
+    // Check PDF existence for each resolution
+    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+    resoluciones.forEach(r => {
+      const pdfPath = path.join(pdfsDir, `${r.fecha_resolucion}-${r.numero_resolucion}.pdf`);
+      r.has_pdf = fs.existsSync(pdfPath);
+    });
     const totalRow = await db.getAsync('SELECT COUNT(*) as cnt FROM resoluciones');
     const allRows = await db.allAsync('SELECT solicitud, fecha_resolucion, vigencia FROM resoluciones');
     const countBySolicitud = (tipo) => allRows.filter(r => r.solicitud === tipo).length;
@@ -303,7 +357,7 @@ router.get('/nueva', (req, res) => {
 
 // Create
 router.post('/', async (req, res) => {
-  const { nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, sucursal, desde, hasta, vigencia, pdf_temp } = req.body;
+  const { nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, sucursal, desde, hasta, vigencia, pdf_temp, guardar_pdf } = req.body;
   try {
     // Check for duplicate resolution number
     const existe = await db.getAsync('SELECT id FROM resoluciones WHERE numero_resolucion = ?', [numero_resolucion]);
@@ -317,8 +371,8 @@ router.post('/', async (req, res) => {
       [nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo || '', sucursal || '', desde, hasta, vigencia]
     );
 
-    // Save PDF permanently if a temp file was attached
-    if (pdf_temp) {
+    // Save PDF permanently only if checkbox was checked
+    if (pdf_temp && guardar_pdf === '1') {
       try {
         const tmpPath = path.join(__dirname, '..', 'tmp', pdf_temp);
         const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
@@ -390,7 +444,14 @@ router.put('/:id', async (req, res) => {
 // Delete
 router.delete('/:id', async (req, res) => {
   try {
+    // Get resolution data to find the PDF file
+    const resolucion = await db.getAsync('SELECT fecha_resolucion, numero_resolucion FROM resoluciones WHERE id = ?', [req.params.id]);
     await db.runAsync('DELETE FROM resoluciones WHERE id = ?', [req.params.id]);
+    // Delete associated PDF file
+    if (resolucion) {
+      const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`);
+      if (fs.existsSync(pdfPath)) fs.unlink(pdfPath, () => {});
+    }
     req.session.message = { type: 'success', text: 'Resolución eliminada.' };
   } catch (e) {
     req.session.message = { type: 'error', text: 'Error al eliminar: ' + e.message };
