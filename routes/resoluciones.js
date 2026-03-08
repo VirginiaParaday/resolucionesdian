@@ -269,7 +269,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
         resultado.resolucion_datos = resExiste;
         // Check if PDF file already exists
         const pdfNombre = `${resExiste.fecha_resolucion}-${resExiste.numero_resolucion}`;
-        const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', pdfNombre + '.pdf');
+        const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions', pdfNombre + '.pdf');
         resultado.pdf_nombre = pdfNombre;
         resultado.pdf_existe = fs.existsSync(pdfPath);
       }
@@ -350,7 +350,7 @@ router.post('/validar-pdfs', uploadPdf.array('pdfs', 50), async (req, res) => {
           if (row) {
             existe = true;
             pdfNombre = `${row.fecha_resolucion}-${row.numero_resolucion}`;
-            const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', pdfNombre + '.pdf');
+            const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions', pdfNombre + '.pdf');
             pdfExiste = fs.existsSync(pdfPath);
           }
         }
@@ -414,7 +414,7 @@ router.post('/guardar-resolucion-pdf', async (req, res) => {
     // Save PDF
     const tmpPath = path.join(__dirname, '..', 'tmp', pdf_temp);
     if (fs.existsSync(tmpPath)) {
-      const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+      const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions');
       if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
       const destName = `${fecha_resolucion || 'sin-fecha'}-${numero_resolucion}.pdf`;
       fs.copyFileSync(tmpPath, path.join(pdfsDir, destName));
@@ -442,7 +442,7 @@ router.post('/subir-pdf-temp', async (req, res) => {
     if (!fs.existsSync(tmpPath)) {
       return res.status(404).json({ error: 'El archivo temporal ya no existe.' });
     }
-    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions');
     if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
     const destName = `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`;
     fs.copyFileSync(tmpPath, path.join(pdfsDir, destName));
@@ -464,7 +464,7 @@ router.post('/guardar-pdf', async (req, res) => {
     if (!fs.existsSync(tmpPath)) {
       return res.status(404).json({ error: 'El archivo temporal ya no existe. Por favor cargue el PDF de nuevo.' });
     }
-    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions');
     if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
     const destName = `${fecha_resolucion}-${numero_resolucion}.pdf`;
     const destPath = path.join(pdfsDir, destName);
@@ -511,7 +511,7 @@ router.post('/subir-pdf/:id', uploadPdf.single('pdf'), async (req, res) => {
     }
 
     // Save PDF
-    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions');
     if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
     const destName = `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`;
     const destPath = path.join(pdfsDir, destName);
@@ -544,7 +544,7 @@ router.get('/', async (req, res) => {
   try {
     const resoluciones = await db.allAsync(query, params);
     // Check PDF existence for each resolution
-    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+    const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions');
     resoluciones.forEach(r => {
       const pdfPath = path.join(pdfsDir, `${r.fecha_resolucion}-${r.numero_resolucion}.pdf`);
       r.has_pdf = fs.existsSync(pdfPath);
@@ -625,7 +625,7 @@ router.post('/', async (req, res) => {
     if (pdf_temp && guardar_pdf === '1') {
       try {
         const tmpPath = path.join(__dirname, '..', 'tmp', pdf_temp);
-        const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs');
+        const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions');
         if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
         const destName = `${fecha_resolucion}-${numero_resolucion}.pdf`;
         const destPath = path.join(pdfsDir, destName);
@@ -712,7 +712,7 @@ router.delete('/:id', async (req, res) => {
     await db.runAsync('DELETE FROM resoluciones WHERE id = ?', [req.params.id]);
     // Delete associated PDF file
     if (resolucion) {
-      const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`);
+      const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions', `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`);
       if (fs.existsSync(pdfPath)) fs.unlink(pdfPath, () => {});
     }
     req.session.message = { type: 'success', text: 'Resolución eliminada.' };
