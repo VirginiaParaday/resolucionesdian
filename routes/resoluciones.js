@@ -529,6 +529,7 @@ router.get('/', async (req, res) => {
   const search = req.query.search || '';
   const modalidad = req.query.modalidad || '';
   const solicitud = req.query.solicitud || '';
+  const vencimiento = req.query.vencimiento || '';
 
   let query = 'SELECT * FROM resoluciones WHERE 1=1';
   const params = [];
@@ -542,13 +543,37 @@ router.get('/', async (req, res) => {
   query += ' ORDER BY created_at DESC';
 
   try {
-    const resoluciones = await db.allAsync(query, params);
+    let resoluciones = await db.allAsync(query, params);
     // Check PDF existence for each resolution
     const pdfsDir = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions');
     resoluciones.forEach(r => {
       const pdfPath = path.join(pdfsDir, `${r.fecha_resolucion}-${r.numero_resolucion}.pdf`);
       r.has_pdf = fs.existsSync(pdfPath);
     });
+
+    // Filter by vencimiento status if requested
+    if (vencimiento) {
+      const hoyFilter = new Date();
+      hoyFilter.setHours(0, 0, 0, 0);
+      resoluciones = resoluciones.filter(r => {
+        if (!r.fecha_resolucion || !r.vigencia) return false;
+        const mv = parseInt(r.vigencia);
+        if (isNaN(mv)) return false;
+        const fv = new Date(r.fecha_resolucion + 'T00:00:00');
+        fv.setMonth(fv.getMonth() + mv);
+        fv.setHours(0, 0, 0, 0);
+        const diffDias = Math.ceil((fv - hoyFilter) / (1000 * 60 * 60 * 24));
+
+        switch (vencimiento) {
+          case 'vencidas': return diffDias < 0;
+          case 'hoy': return diffDias === 0;
+          case '1dia': return diffDias === 1;
+          case '15dias': return diffDias > 0 && diffDias <= 15;
+          default: return true;
+        }
+      });
+    }
+
     const totalRow = await db.getAsync('SELECT COUNT(*) as cnt FROM resoluciones');
     const allRows = await db.allAsync('SELECT solicitud, fecha_resolucion, vigencia FROM resoluciones');
     const countBySolicitud = (tipo) => allRows.filter(r => r.solicitud === tipo).length;
@@ -577,7 +602,7 @@ router.get('/', async (req, res) => {
 
     res.render('index', {
       resoluciones,
-      search, modalidad, solicitud,
+      search, modalidad, solicitud, vencimiento,
       total: totalRow.cnt,
       totalAuth: countBySolicitud('Autorización'),
       totalHab: countBySolicitud('Habilitación'),

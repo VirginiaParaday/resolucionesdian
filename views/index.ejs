@@ -99,8 +99,18 @@
                 </option>
               </select>
             </div>
+            <div class="filter-group">
+              <label>Vencimiento</label>
+              <select name="vencimiento">
+                <option value="">Todas</option>
+                <option value="vencidas" <%=vencimiento==='vencidas' ? 'selected' : '' %>>Vencidas (Total)</option>
+                <option value="hoy" <%=vencimiento==='hoy' ? 'selected' : '' %>>Vencen hoy</option>
+                <option value="1dia" <%=vencimiento==='1dia' ? 'selected' : '' %>>Por vencer en 1 día</option>
+                <option value="15dias" <%=vencimiento==='15dias' ? 'selected' : '' %>>Por vencer en 15 días</option>
+              </select>
+            </div>
             <button type="submit" class="btn btn-primary">Filtrar</button>
-            <% if (search || modalidad || solicitud) { %>
+            <% if (search || modalidad || solicitud || vencimiento) { %>
               <a href="/resoluciones" class="btn btn-ghost">Limpiar</a>
               <% } %>
           </form>
