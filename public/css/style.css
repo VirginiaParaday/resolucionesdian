@@ -233,6 +233,11 @@ body {
   box-shadow: var(--shadow);
 }
 
+.filters > .btn {
+  height: 35px;
+  align-self: flex-end;
+}
+
 .filter-group {
   display: flex;
   flex-direction: column;
