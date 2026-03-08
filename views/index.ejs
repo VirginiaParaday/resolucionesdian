@@ -215,6 +215,10 @@
                               <% } %>
                               <a href="/resoluciones/<%= r.id %>" class="btn btn-sm btn-outline"
                                 title="Ver detalle">👁</a>
+                              <button type="button" class="btn btn-sm btn-check-toggle <%= r.checked ? 'checked' : '' %>"
+                                title="Marcar" data-id="<%= r.id %>" onclick="toggleCheck(this)">
+                                <span class="check-icon"><%= r.checked ? '☑' : '☐' %></span>
+                              </button>
                               <a href="/resoluciones/<%= r.id %>/editar" class="btn btn-sm btn-gold"
                                 title="Editar">✏️</a>
                               <form method="POST" action="/resoluciones/<%= r.id %>?_method=DELETE"
@@ -250,6 +254,25 @@
             else { alert(data.error || 'Error al subir el PDF.'); }
           })
           .catch(() => alert('Error al subir el PDF.'));
+      }
+
+      function toggleCheck(btn) {
+        const id = btn.dataset.id;
+        fetch('/resoluciones/' + id + '/toggle-check', { method: 'PATCH' })
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok) {
+              const icon = btn.querySelector('.check-icon');
+              if (data.checked) {
+                btn.classList.add('checked');
+                icon.textContent = '☑';
+              } else {
+                btn.classList.remove('checked');
+                icon.textContent = '☐';
+              }
+            }
+          })
+          .catch(() => {});
       }
     </script>
 

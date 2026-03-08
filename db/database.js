@@ -97,6 +97,13 @@ db.serialize(() => {
     )
   `);
 
+  // Migration: add 'checked' column to resoluciones if it doesn't exist
+  db.all("PRAGMA table_info(resoluciones)", (err, cols) => {
+    if (!err && cols && !cols.find(c => c.name === 'checked')) {
+      db.run("ALTER TABLE resoluciones ADD COLUMN checked INTEGER DEFAULT 0");
+    }
+  });
+
   // Seed default user (IG / 1973) — only if not exists
   const bcrypt = require('bcrypt');
   db.get(`SELECT id FROM usuarios WHERE usuario = ?`, ['IG'], (err, row) => {

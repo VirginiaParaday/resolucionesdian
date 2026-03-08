@@ -691,6 +691,19 @@ router.put('/:id', async (req, res) => {
   res.redirect('/resoluciones');
 });
 
+// Toggle checked state
+router.patch('/:id/toggle-check', async (req, res) => {
+  try {
+    const row = await db.getAsync('SELECT checked FROM resoluciones WHERE id = ?', [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'No encontrada.' });
+    const newVal = row.checked ? 0 : 1;
+    await db.runAsync('UPDATE resoluciones SET checked = ? WHERE id = ?', [newVal, req.params.id]);
+    res.json({ ok: true, checked: newVal });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Delete
 router.delete('/:id', async (req, res) => {
   try {
