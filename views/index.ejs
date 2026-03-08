@@ -212,7 +212,7 @@
                               </button>
                               <div class="actions-panel">
                                 <% if (r.has_pdf) { %>
-                                  <a href="/uploads/pdfs/<%= r.fecha_resolucion %>-<%= r.numero_resolucion %>.pdf" target="_blank" class="btn btn-sm btn-outline" title="Ver PDF" style="color:#E67E22;border-color:#E67E22">📁</a>
+                                  <a href="/uploads/pdfs/Clients/Billing Resolutions/<%= r.fecha_resolucion %>-<%= r.numero_resolucion %>.pdf" target="_blank" class="btn btn-sm btn-outline" title="Ver PDF" style="color:#E67E22;border-color:#E67E22">📁</a>
                                 <% } else { %>
                                   <input type="file" id="pdfUpload_<%= r.id %>" accept=".pdf" style="display:none" onchange="subirPdfResolucion(<%= r.id %>, this)">
                                   <button type="button" class="btn btn-sm btn-outline" title="Subir PDF" style="color:#3498db;border-color:#3498db" onclick="document.getElementById('pdfUpload_<%= r.id %>').click()">📤</button>
@@ -288,6 +288,20 @@
         // Toggle current
         if (!wasOpen) wrapper.classList.add('open');
       }
+
+      // Close actions panel on click outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.actions-wrapper')) {
+          document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+        }
+      });
+
+      // Close actions panel on Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+        }
+      });
     </script>
 
 </body>
