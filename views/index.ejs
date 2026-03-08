@@ -206,25 +206,30 @@
                                     <% } else { %>—<% } %>
                           </td>
                           <td>
-                            <div class="actions">
-                              <% if (r.has_pdf) { %>
-                                <a href="/uploads/pdfs/<%= r.fecha_resolucion %>-<%= r.numero_resolucion %>.pdf" target="_blank" class="btn btn-sm btn-outline" title="Ver PDF" style="color:#E67E22;border-color:#E67E22">📁</a>
-                              <% } else { %>
-                                <input type="file" id="pdfUpload_<%= r.id %>" accept=".pdf" style="display:none" onchange="subirPdfResolucion(<%= r.id %>, this)">
-                                <button type="button" class="btn btn-sm btn-outline" title="Subir PDF" style="color:#3498db;border-color:#3498db" onclick="document.getElementById('pdfUpload_<%= r.id %>').click()">📤</button>
-                              <% } %>
-                              <a href="/resoluciones/<%= r.id %>" class="btn btn-sm btn-outline"
-                                title="Ver detalle">👁</a>
-                              <button type="button" class="btn btn-sm btn-check-toggle <%= r.checked ? 'checked' : '' %>"
-                                title="Marcar" data-id="<%= r.id %>" onclick="toggleCheck(this)">
-                                <span class="check-icon"><%= r.checked ? '☑' : '☐' %></span>
+                            <div class="actions-wrapper">
+                              <button type="button" class="btn btn-sm btn-toggle-actions" title="Acciones" onclick="toggleActions(this)">
+                                <span class="toggle-icon">+</span>
                               </button>
-                              <a href="/resoluciones/<%= r.id %>/editar" class="btn btn-sm btn-gold"
-                                title="Editar">✏️</a>
-                              <form method="POST" action="/resoluciones/<%= r.id %>?_method=DELETE"
-                                style="display:inline" onsubmit="return confirm('¿Eliminar esta resolución?')">
-                                <button type="submit" class="btn btn-sm btn-danger" title="Eliminar">🗑</button>
-                              </form>
+                              <div class="actions-panel">
+                                <% if (r.has_pdf) { %>
+                                  <a href="/uploads/pdfs/<%= r.fecha_resolucion %>-<%= r.numero_resolucion %>.pdf" target="_blank" class="btn btn-sm btn-outline" title="Ver PDF" style="color:#E67E22;border-color:#E67E22">📁</a>
+                                <% } else { %>
+                                  <input type="file" id="pdfUpload_<%= r.id %>" accept=".pdf" style="display:none" onchange="subirPdfResolucion(<%= r.id %>, this)">
+                                  <button type="button" class="btn btn-sm btn-outline" title="Subir PDF" style="color:#3498db;border-color:#3498db" onclick="document.getElementById('pdfUpload_<%= r.id %>').click()">📤</button>
+                                <% } %>
+                                <a href="/resoluciones/<%= r.id %>" class="btn btn-sm btn-outline"
+                                  title="Ver detalle">👁</a>
+                                <button type="button" class="btn btn-sm btn-check-toggle <%= r.checked ? 'checked' : '' %>"
+                                  title="Marcar" data-id="<%= r.id %>" onclick="toggleCheck(this)">
+                                  <span class="check-icon"><%= r.checked ? '☑' : '☐' %></span>
+                                </button>
+                                <a href="/resoluciones/<%= r.id %>/editar" class="btn btn-sm btn-gold"
+                                  title="Editar">✏️</a>
+                                <form method="POST" action="/resoluciones/<%= r.id %>?_method=DELETE"
+                                  style="display:inline" onsubmit="return confirm('¿Eliminar esta resolución?')">
+                                  <button type="submit" class="btn btn-sm btn-danger" title="Eliminar">🗑</button>
+                                </form>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -273,6 +278,15 @@
             }
           })
           .catch(() => {});
+      }
+
+      function toggleActions(btn) {
+        const wrapper = btn.closest('.actions-wrapper');
+        const wasOpen = wrapper.classList.contains('open');
+        // Close all other open panels
+        document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+        // Toggle current
+        if (!wasOpen) wrapper.classList.add('open');
       }
     </script>
 
