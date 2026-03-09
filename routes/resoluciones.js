@@ -292,7 +292,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
         // Check if establecimiento/address exists for this tercero
         if (establecimiento) {
           const dirExiste = await db.getAsync(
-            'SELECT * FROM direcciones_tercero WHERE tercero_nit = ? AND LOWER(direccion) = LOWER(?)',
+            'SELECT * FROM direcciones_tercero WHERE tercero_nit = ? AND direccion ILIKE ?',
             [nit, establecimiento]
           );
           if (!dirExiste) {
@@ -535,7 +535,7 @@ router.get('/', async (req, res) => {
   const params = [];
 
   if (search) {
-    query += ' AND (nit LIKE ? OR nombre_tercero LIKE ? OR numero_resolucion LIKE ? OR prefijo LIKE ?)';
+    query += ' AND (nit ILIKE ? OR nombre_tercero ILIKE ? OR numero_resolucion ILIKE ? OR prefijo ILIKE ?)';
     params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
   }
   if (modalidad) { query += ' AND modalidad = ?'; params.push(modalidad); }

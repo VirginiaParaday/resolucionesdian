@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
@@ -36,7 +37,7 @@ async function autoLogin(req, res, next) {
     const row = await db.getAsync(
       `SELECT rt.usuario_id, u.usuario FROM remember_tokens rt
        JOIN usuarios u ON u.id = rt.usuario_id
-       WHERE rt.token = ? AND rt.expires_at > datetime('now')`,
+       WHERE rt.token = ? AND rt.expires_at > NOW()`,
       [token]
     );
     if (row) {

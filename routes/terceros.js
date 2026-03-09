@@ -23,8 +23,8 @@ router.get('/api/buscar', async (req, res) => {
     try {
         const rows = await db.allAsync(
             `SELECT * FROM terceros
-       WHERE LOWER(nit) LIKE LOWER(?) OR LOWER(primer_nombre) LIKE LOWER(?) OR LOWER(segundo_nombre) LIKE LOWER(?)
-         OR LOWER(primer_apellido) LIKE LOWER(?) OR LOWER(segundo_apellido) LIKE LOWER(?) OR LOWER(razon_social) LIKE LOWER(?)
+       WHERE nit ILIKE ? OR primer_nombre ILIKE ? OR segundo_nombre ILIKE ?
+         OR primer_apellido ILIKE ? OR segundo_apellido ILIKE ? OR razon_social ILIKE ?
        ORDER BY nit LIMIT 15`,
             Array(6).fill(`%${q}%`)
         );
@@ -62,7 +62,12 @@ router.post('/api/direcciones', async (req, res) => {
             'INSERT INTO direcciones_tercero (tercero_nit, direccion) VALUES (?, ?)',
             [nit, direccion.trim()]
         );
-        res.json({ id: result.lastID, tercero_nit: nit, direccion: direccion.trim() });
+        // Use RETURNING id to get the inserted row's id
+        const insertResult = await db.getAsync(
+            'SELECT id FROM direcciones_tercero WHERE tercero_nit = ? AND direccion = ? ORDER BY id DESC LIMIT 1',
+            [nit, direccion.trim()]
+        );
+        res.json({ id: insertResult ? insertResult.id : null, tercero_nit: nit, direccion: direccion.trim() });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -108,20 +113,20 @@ router.get('/', async (req, res) => {
     const params = [];
     if (search) {
         query += ` AND (
-            nit LIKE ? COLLATE NOCASE 
-            OR primer_nombre LIKE ? COLLATE NOCASE 
-            OR segundo_nombre LIKE ? COLLATE NOCASE 
-            OR primer_apellido LIKE ? COLLATE NOCASE 
-            OR segundo_apellido LIKE ? COLLATE NOCASE 
-            OR razon_social LIKE ? COLLATE NOCASE
-            OR (COALESCE(primer_nombre,'') || ' ' || COALESCE(segundo_nombre,'') || ' ' || COALESCE(primer_apellido,'') || ' ' || COALESCE(segundo_apellido,'')) LIKE ? COLLATE NOCASE
+            nit ILIKE ? 
+            OR primer_nombre ILIKE ? 
+            OR segundo_nombre ILIKE ? 
+            OR primer_apellido ILIKE ? 
+            OR segundo_apellido ILIKE ? 
+            OR razon_social ILIKE ?
+            OR (COALESCE(primer_nombre,'') || ' ' || COALESCE(segundo_nombre,'') || ' ' || COALESCE(primer_apellido,'') || ' ' || COALESCE(segundo_apellido,'')) ILIKE ?
         )`;
         params.push(...Array(7).fill(`%${search}%`));
     }
     if (sort === 'nit') {
         query += ' ORDER BY CAST(nit AS INTEGER) ASC';
     } else if (sort === 'nombre') {
-        query += ` ORDER BY CASE WHEN tipo_persona='Juridica' THEN razon_social ELSE (COALESCE(primer_nombre,'') || ' ' || COALESCE(primer_apellido,'')) END COLLATE NOCASE ASC`;
+        query += ` ORDER BY CASE WHEN tipo_persona='Juridica' THEN razon_social ELSE (COALESCE(primer_nombre,'') || ' ' || COALESCE(primer_apellido,'')) END ASC`;
     } else {
         query += ' ORDER BY created_at DESC';
     }
@@ -169,7 +174,7 @@ router.post('/', async (req, res) => {
         );
         req.session.message = { type: 'success', text: 'Tercero registrado exitosamente.' };
     } catch (e) {
-        if (e.message.includes('UNIQUE')) {
+        if (e.code === '23505' || (e.message && e.message.includes('UNIQUE'))) {
             req.session.message = { type: 'error', text: 'Ya existe un tercero con ese NIT.' };
         } else {
             req.session.message = { type: 'error', text: 'Error al registrar: ' + e.message };

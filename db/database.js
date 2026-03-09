@@ -1,117 +1,163 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs');
+require('dotenv').config();
+const { Pool } = require('pg');
 
-const dbDir = path.join(__dirname);
-if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
-
-const dbPath = path.join(dbDir, 'resoluciones.db');
-const db = new sqlite3.Database(dbPath);
-
-// Promisify helpers para usar con async/await o callbacks simples
-db.runAsync = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) {
-    if (err) reject(err);
-    else resolve(this);
-  });
+// Railway sets DATABASE_URL automatically
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway')
+    ? { rejectUnauthorized: false }
+    : false
 });
 
-db.allAsync = (sql, params = []) => new Promise((resolve, reject) => {
-  db.all(sql, params, (err, rows) => {
-    if (err) reject(err);
-    else resolve(rows);
-  });
-});
+// ── Wrapper that keeps the same interface used by routes ──
 
-db.getAsync = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => {
-    if (err) reject(err);
-    else resolve(row);
-  });
-});
+const db = {};
 
-// Crear tablas si no existen
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS resoluciones (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nit TEXT NOT NULL,
-      nombre_tercero TEXT NOT NULL,
-      fecha_resolucion TEXT NOT NULL,
-      numero_resolucion TEXT NOT NULL,
-      modalidad TEXT NOT NULL,
-      solicitud TEXT NOT NULL,
-      prefijo TEXT,
-      sucursal TEXT,
-      desde TEXT NOT NULL,
-      hasta TEXT NOT NULL,
-      vigencia TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+/**
+ * Run a query that doesn't necessarily return rows (INSERT, UPDATE, DELETE).
+ * For INSERTs the caller may need `lastID`, so we append RETURNING id when appropriate.
+ */
+db.runAsync = async (sql, params = []) => {
+  // Convert ? placeholders to $1..$N
+  const { text, values } = convertPlaceholders(sql, params);
+  const res = await pool.query(text, values);
+  // Mimic sqlite3's `this` in run callback
+  return {
+    lastID: res.rows && res.rows.length > 0 && res.rows[0].id !== undefined ? res.rows[0].id : null,
+    changes: res.rowCount
+  };
+};
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS terceros (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nit TEXT NOT NULL UNIQUE,
-      dv TEXT,
-      tipo_persona TEXT NOT NULL DEFAULT 'Natural',
-      primer_nombre TEXT,
-      segundo_nombre TEXT,
-      primer_apellido TEXT,
-      segundo_apellido TEXT,
-      razon_social TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+/**
+ * Run a query that returns multiple rows.
+ */
+db.allAsync = async (sql, params = []) => {
+  const { text, values } = convertPlaceholders(sql, params);
+  const res = await pool.query(text, values);
+  return res.rows;
+};
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS direcciones_tercero (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      tercero_nit TEXT NOT NULL,
-      direccion TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (tercero_nit) REFERENCES terceros(nit)
-    )
-  `);
+/**
+ * Run a query that returns a single row (or undefined).
+ */
+db.getAsync = async (sql, params = []) => {
+  const { text, values } = convertPlaceholders(sql, params);
+  const res = await pool.query(text, values);
+  return res.rows[0] || undefined;
+};
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      usuario TEXT NOT NULL UNIQUE,
-      contrasena TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+/**
+ * Convert SQLite-style `?` placeholders to PostgreSQL `$1, $2, …`
+ * Also handles simple SQLite → PG syntax differences.
+ */
+function convertPlaceholders(sql, params) {
+  let idx = 0;
+  const text = sql.replace(/\?/g, () => `$${++idx}`);
+  return { text, values: params };
+}
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS remember_tokens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      usuario_id INTEGER NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      expires_at DATETIME NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-    )
-  `);
+// ── Table creation ──
 
-  // Migration: add 'checked' column to resoluciones if it doesn't exist
-  db.all("PRAGMA table_info(resoluciones)", (err, cols) => {
-    if (!err && cols && !cols.find(c => c.name === 'checked')) {
-      db.run("ALTER TABLE resoluciones ADD COLUMN checked INTEGER DEFAULT 0");
-    }
-  });
+async function initDatabase() {
+  let client;
+  try {
+    client = await pool.connect();
+  } catch (err) {
+    console.warn('⚠️  No se pudo conectar a PostgreSQL:', err.message);
+    console.warn('   La app arrancará, pero las queries fallarán hasta que la BD esté disponible.');
+    console.warn('   En Railway, DATABASE_URL se configura automáticamente.');
+    return;
+  }
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS resoluciones (
+        id SERIAL PRIMARY KEY,
+        nit TEXT NOT NULL,
+        nombre_tercero TEXT NOT NULL,
+        fecha_resolucion TEXT NOT NULL,
+        numero_resolucion TEXT NOT NULL,
+        modalidad TEXT NOT NULL,
+        solicitud TEXT NOT NULL,
+        prefijo TEXT,
+        sucursal TEXT,
+        desde TEXT NOT NULL,
+        hasta TEXT NOT NULL,
+        vigencia TEXT NOT NULL,
+        checked INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
 
-  // Seed default user (IG / 1973) — only if not exists
-  const bcrypt = require('bcrypt');
-  db.get(`SELECT id FROM usuarios WHERE usuario = ?`, ['IG'], (err, row) => {
-    if (!row) {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS terceros (
+        id SERIAL PRIMARY KEY,
+        nit TEXT NOT NULL UNIQUE,
+        dv TEXT,
+        tipo_persona TEXT NOT NULL DEFAULT 'Natural',
+        primer_nombre TEXT,
+        segundo_nombre TEXT,
+        primer_apellido TEXT,
+        segundo_apellido TEXT,
+        razon_social TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS direcciones_tercero (
+        id SERIAL PRIMARY KEY,
+        tercero_nit TEXT NOT NULL,
+        direccion TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        FOREIGN KEY (tercero_nit) REFERENCES terceros(nit)
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        usuario TEXT NOT NULL UNIQUE,
+        contrasena TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS remember_tokens (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+      )
+    `);
+
+    // Seed default user (IG / 1973) — only if not exists
+    const bcrypt = require('bcrypt');
+    const existing = await client.query('SELECT id FROM usuarios WHERE usuario = $1', ['IG']);
+    if (existing.rows.length === 0) {
       const hash = bcrypt.hashSync('1973', 10);
-      db.run(`INSERT INTO usuarios (usuario, contrasena) VALUES (?, ?)`, ['IG', hash]);
+      await client.query('INSERT INTO usuarios (usuario, contrasena) VALUES ($1, $2)', ['IG', hash]);
     }
-  });
+
+    console.log('✅ Tablas PostgreSQL inicializadas correctamente');
+  } catch (err) {
+    console.error('Error al inicializar la base de datos:', err.message);
+  } finally {
+    client.release();
+  }
+}
+
+// Suppress unhandled pool errors (e.g. when PG is unavailable)
+pool.on('error', (err) => {
+  console.error('Error inesperado en pool PostgreSQL:', err.message);
 });
+
+// Run init on require
+initDatabase().catch(() => {});
 
 module.exports = db;
+
