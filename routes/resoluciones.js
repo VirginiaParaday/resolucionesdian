@@ -116,10 +116,13 @@ function extraerDatosFormulario(texto) {
     // ESTABLECIMIENTO — line before the data row
     const matchedPattern = texto.match(patternA) ? patternA : texto.match(patternB) ? patternB : texto.match(patternA2) ? patternA2 : patternB2;
     const dataLineIdx = lines.findIndex(l => matchedPattern.test(l));
+    console.log('[DEBUG] Pattern A/B dataLineIdx:', dataLineIdx, dataLineIdx >= 0 ? 'line content: ' + JSON.stringify(lines[dataLineIdx]) : '');
     if (dataLineIdx > 0) {
       const prevLine = lines[dataLineIdx - 1];
+      console.log('[DEBUG] Pattern A/B prevLine (line before data):', JSON.stringify(prevLine));
       if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !/^\d+\.\s+\w/.test(prevLine)) {
         if (!prevLine.includes('Establecimiento')) {
+          console.log('[DEBUG] Pattern A/B setting establecimiento from prevLine (NOT containing Establecimiento):', JSON.stringify(prevLine));
           establecimiento = prevLine;
         } else {
           // Value may be inline after the label (e.g. "29. Establecimiento CALLE 45 ...")
@@ -203,8 +206,10 @@ function extraerDatosFormulario(texto) {
       // ESTABLECIMIENTO — line before the modalidad line
       if (modIdx > 0) {
         const prevLine = lines[modIdx - 1];
+        console.log('[DEBUG] Pattern C prevLine (line before modalidad):', JSON.stringify(prevLine));
         if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !/^\d\s+\d/.test(prevLine) && !/^\d+\.\s+\w/.test(prevLine)) {
           if (!prevLine.includes('Establecimiento')) {
+            console.log('[DEBUG] Pattern C setting establecimiento from prevLine:', JSON.stringify(prevLine));
             establecimiento = prevLine;
           } else {
             const inlineMatch = prevLine.match(/Establecimiento[:\s]+(.+)/i);
@@ -219,6 +224,7 @@ function extraerDatosFormulario(texto) {
 
   // Global fallback — use raw texto with regex (more reliable for DIAN PDF table layouts)
   if (!establecimiento) {
+    console.log('[DEBUG] Global fallback Strategy 1 running (establecimiento is empty)');
     // Strategy 1: "Establecimiento" followed by whitespace/newline then a capitalized address/name line
     const rawMatch = texto.match(/Establecimiento[\s\r\n]+([A-ZÁÉÍÓÚÑ][^\r\n]{3,})/i);
     if (rawMatch) {
@@ -230,13 +236,19 @@ function extraerDatosFormulario(texto) {
         !/AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N/i.test(candidate) &&
         !/^FACTURA|^DOCUMENTO|^FACTURACI|^PAPEL|^COMPUTADOR|^SOPORTE/i.test(candidate)
       ) {
+        console.log('[DEBUG] Global fallback Strategy 1 SET establecimiento to:', JSON.stringify(candidate));
         establecimiento = candidate;
+      } else {
+        console.log('[DEBUG] Global fallback Strategy 1 REJECTED candidate:', JSON.stringify(candidate));
       }
     }
+  } else {
+    console.log('[DEBUG] Global fallback Strategy 1 SKIPPED (establecimiento already set to:', JSON.stringify(establecimiento) + ')');
   }
 
   // Strategy 2: line-based scan around all occurrences of "Establecimiento"
   if (!establecimiento) {
+    console.log('[DEBUG] Global fallback Strategy 2 running (establecimiento is empty)');
     for (let ei = 0; ei < lines.length && !establecimiento; ei++) {
       if (!/Establecimiento/i.test(lines[ei])) continue;
 
@@ -245,6 +257,7 @@ function extraerDatosFormulario(texto) {
       if (inlineMatch) {
         const candidate = inlineMatch[1].trim();
         if (candidate.length > 3 && !/^\d+$/.test(candidate) && !/^(?:Modalidad|Prefijo|Solicitud|Cod|Cód|30\.|31\.|32\.|33\.)/i.test(candidate)) {
+          console.log('[DEBUG] Global fallback Strategy 2 SET from inline:', JSON.stringify(candidate));
           establecimiento = candidate;
           break;
         }
@@ -261,10 +274,13 @@ function extraerDatosFormulario(texto) {
         if (/^(?:30\.|31\.|32\.|33\.|34\.|38\.|Modalidad|Prefijo|Solicitud|Vigencia|Cod|Cód|Rangos|Tipo)/i.test(candidate)) continue;
         if (/AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N/i.test(candidate)) break;
         if (/^(FACTURA|DOCUMENTO|FACTURACI|PAPEL|COMPUTADOR|SOPORTE|D\.E|POS)/i.test(candidate)) break;
+        console.log('[DEBUG] Global fallback Strategy 2 SET from line', j, ':', JSON.stringify(candidate));
         establecimiento = candidate;
         break;
       }
     }
+  } else {
+    console.log('[DEBUG] Global fallback Strategy 2 SKIPPED (establecimiento already set to:', JSON.stringify(establecimiento) + ')');
   }
 
   // 4. NÚMERO DE FORMULARIO — long digit string (12+ digits)
