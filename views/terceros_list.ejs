@@ -88,7 +88,7 @@
                                                 <th>DV</th>
                                                 <th>Tipo</th>
                                                 <th>Nombre / Razón Social</th>
-                                                <th>Acciones</th>
+                                                <th></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -98,7 +98,7 @@
                                                         <%= i + 1 %>
                                                     </td>
                                                     <td class="td-num">
-                                                        <%= Number(t.nit).toLocaleString('es-CO') %>
+                                                        <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= t.nit %></span>
                                                     </td>
                                                     <td class="td-num">
                                                         <%= t.dv || '—' %>
@@ -110,19 +110,22 @@
                                                         </span>
                                                     </td>
                                                     <td class="td-main">
-                                                        <%= t.nombre_display %>
+                                                        <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= t.nombre_display %></span>
                                                     </td>
-                                                    <td>
-                                                        <div class="actions">
-                                                            <a href="/terceros/<%= t.id %>/editar"
-                                                                class="btn btn-sm-te bted" title="Editar">Editar</a>
-                                                            <form method="POST"
-                                                                action="/terceros/<%= t.id %>?_method=DELETE"
-                                                                style="display:inline"
-                                                                onsubmit="return confirm('¿Eliminar este tercero?')">
-                                                                <button type="submit" class="btn btn-sm-te btde"
-                                                                    title="Eliminar">Eliminar</button>
-                                                            </form>
+                                                    <td class="td-actions-cell">
+                                                        <div class="row-actions-wrapper">
+                                                            <div class="row-action-btns">
+                                                                <a href="/terceros/<%= t.id %>/editar"
+                                                                    class="btn btn-sm-te bted" title="Editar">Editar</a>
+                                                                <form method="POST"
+                                                                    action="/terceros/<%= t.id %>?_method=DELETE"
+                                                                    style="display:inline"
+                                                                    onsubmit="return confirm('¿Eliminar este tercero?')">
+                                                                    <button type="submit" class="btn btn-sm-te btde"
+                                                                        title="Eliminar">Eliminar</button>
+                                                                </form>
+                                                            </div>
+                                                            <button type="button" class="btn-row-toggle" title="Acciones" onclick="toggleRowActions(this)">+</button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -140,6 +143,27 @@
         <%- include('partials/clock') %>
 
 
+<script>
+function toggleRowActions(btn) {
+  const wrapper = btn.closest('.row-actions-wrapper');
+  wrapper.classList.toggle('open');
+}
+
+document.querySelectorAll('tbody tr').forEach(function(row) {
+  row.addEventListener('mouseleave', function() {
+    const wrapper = row.querySelector('.row-actions-wrapper');
+    if (wrapper) wrapper.classList.remove('open');
+  });
+});
+
+function copyNombre(el) {
+  const text = el.textContent.trim();
+  navigator.clipboard.writeText(text).then(function() {
+    el.setAttribute('data-tooltip', '¡Copiado!');
+    setTimeout(function() { el.setAttribute('data-tooltip', 'Copiar'); }, 1500);
+  });
+}
+</script>
 </body>
 
 </html>

@@ -170,13 +170,13 @@
                             <%= i + 1 %>
                           </td>
                           <td class="td-num">
-                            <%= r.nit ? Number(r.nit.split('-')[0]).toLocaleString('es-CO') : '' %>
+                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.nit ? r.nit.split('-')[0] : '' %></span>
                           </td>
                           <td>
-                            <%= r.nombre_tercero %>
+                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.nombre_tercero %></span>
                           </td>
                           <td class="td-num">
-                            <%= r.numero_resolucion %>
+                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.numero_resolucion %></span>
                           </td>
                           <td style="white-space:nowrap">
                             <% if (r.fecha_resolucion) { const _fp=r.fecha_resolucion.split('-'); %>
@@ -197,7 +197,7 @@
                             </span>
                           </td>
                           <td style="font-size:12px">
-                            <%= r.sucursal || '—' %>
+                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.sucursal || '—' %></span>
                           </td>
                           <td class="td-num">
                             <%= r.prefijo || '—' %>
@@ -292,6 +292,14 @@
             }
           })
           .catch(() => {});
+      }
+
+      function copyNombre(el) {
+        const text = el.textContent.trim();
+        navigator.clipboard.writeText(text).then(function() {
+          el.setAttribute('data-tooltip', '¡Copiado!');
+          setTimeout(function() { el.setAttribute('data-tooltip', 'Copiar'); }, 1500);
+        });
       }
 
       function toggleActions(btn) {

@@ -384,6 +384,7 @@ body {
   width: 70px;
   background-color: #eeeeee;
   color: #808080;
+  border-radius: 25px;
 }
 
 .btn-sm-te2 {
@@ -408,12 +409,84 @@ body {
   height: 34px;
 }
 
+.bted,
+.btde {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
 .bted:hover {
   background-color: rgb(197, 227, 241);
 }
 
 .btde:hover {
   background-color: rgb(250, 197, 197);
+}
+
+/* Row actions toggle */
+.td-actions-cell {
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.row-actions-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.row-action-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  position: absolute;
+  right: 34px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  white-space: nowrap;
+}
+
+.row-actions-wrapper.open .row-action-btns {
+  pointer-events: all;
+  opacity: 1;
+}
+
+.row-actions-wrapper.open .bted,
+.row-actions-wrapper.open .btde {
+  opacity: 1;
+}
+
+.btn-row-toggle {
+  color: rgb(155, 155, 155);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-row-toggle:hover {
+  background-color: #e8f4fb;
+}
+
+.row-actions-wrapper.open .btn-row-toggle {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .active-sort {
@@ -517,6 +590,19 @@ tbody tr:hover {
   background: #F8F9FD;
 }
 
+tbody tr:hover .bted,
+tbody tr:hover .btde {
+  opacity: 1;
+}
+
+tbody tr:hover .btn-row-toggle {
+  opacity: 1;
+}
+
+tbody tr:hover .row-action-btns {
+  pointer-events: all;
+}
+
 td {
   padding: 12px 14px;
   vertical-align: middle;
@@ -531,6 +617,34 @@ td {
 .td-main {
   font-weight: 600;
   color: var(--text);
+}
+
+.copy-nombre {
+  cursor: pointer;
+  position: relative;
+}
+
+.copy-nombre::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(107, 107, 107, 0.72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 400;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease 0.1s;
+}
+
+.copy-nombre:hover::after {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.7s;
 }
 
 .td-sub {
@@ -576,6 +690,7 @@ td {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .btn-toggle-actions {
