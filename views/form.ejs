@@ -596,6 +596,7 @@
                     }
 
                     console.log('[PDF] establecimiento:', JSON.stringify(data.establecimiento));
+                    console.log('[PDF] texto_extraido:', data.texto_extraido);
                     console.log('[PDF] direcciones cargadas:', dirs ? dirs.map(d => JSON.stringify(d.direccion)) : '(none)');
 
                     const est = normAddr(data.establecimiento);
@@ -622,16 +623,24 @@
                       if (found) {
                         sucursalSelect.selectedIndex = bestIdx;
                         console.log('[PDF] dirección seleccionada:', opts[bestIdx].value);
-                      } else if (data.direccion_registrada) {
-                        // Address was just inserted server-side; add option manually
-                        const opt = document.createElement('option');
-                        opt.value = data.establecimiento.trim();
-                        opt.textContent = data.establecimiento.trim();
-                        opt.selected = true;
-                        sucursalSelect.appendChild(opt);
-                        console.log('[PDF] dirección agregada manualmente:', opt.value);
                       } else {
-                        console.warn('[PDF] establecimiento no coincidió con ninguna opción. est=', est, 'opciones=', Array.from(opts).map(o => normAddr(o.value)));
+                        // Not found in options — open the address panel and pre-fill for manual confirmation
+                        if (btnToggleDir) btnToggleDir.textContent = '−';
+                        if (panelDir) panelDir.style.display = 'block';
+                        if (nuevaDirInput) {
+                          nuevaDirInput.value = data.establecimiento.trim();
+                          nuevaDirInput.focus();
+                        }
+                        // Show warning message below sucursalSelect
+                        let pdfDirWarn = document.getElementById('pdfDirWarning');
+                        if (!pdfDirWarn) {
+                          pdfDirWarn = document.createElement('div');
+                          pdfDirWarn.id = 'pdfDirWarning';
+                          pdfDirWarn.style.cssText = 'margin-top:6px;padding:7px 10px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;color:#856404;font-size:13px;';
+                          sucursalSelect.parentNode.insertBefore(pdfDirWarn, sucursalSelect.nextSibling);
+                        }
+                        pdfDirWarn.innerHTML = `⚠️ La dirección del PDF <strong>"${data.establecimiento.trim()}"</strong> no está registrada para este tercero. Agréguela usando el panel de abajo.`;
+                        console.log('[PDF] dirección no encontrada, panel abierto con:', data.establecimiento);
                       }
                     } else if (opts.length === 2) {
                       // No establecimiento extracted but only one address exists — auto-select it

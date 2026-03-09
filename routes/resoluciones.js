@@ -118,7 +118,7 @@ function extraerDatosFormulario(texto) {
     const dataLineIdx = lines.findIndex(l => matchedPattern.test(l));
     if (dataLineIdx > 0) {
       const prevLine = lines[dataLineIdx - 1];
-      if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine)) {
+      if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !/^\d+\.\s+\w/.test(prevLine)) {
         if (!prevLine.includes('Establecimiento')) {
           establecimiento = prevLine;
         } else {
@@ -203,7 +203,7 @@ function extraerDatosFormulario(texto) {
       // ESTABLECIMIENTO — line before the modalidad line
       if (modIdx > 0) {
         const prevLine = lines[modIdx - 1];
-        if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !/^\d\s+\d/.test(prevLine)) {
+        if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !/^\d\s+\d/.test(prevLine) && !/^\d+\.\s+\w/.test(prevLine)) {
           if (!prevLine.includes('Establecimiento')) {
             establecimiento = prevLine;
           } else {
@@ -217,18 +217,52 @@ function extraerDatosFormulario(texto) {
     }
   }
 
-  // Global fallback: explicitly search for "Establecimiento" label anywhere in the text
+  // Global fallback — use raw texto with regex (more reliable for DIAN PDF table layouts)
   if (!establecimiento) {
-    const estabIdx = lines.findIndex(l => /Establecimiento/i.test(l));
-    if (estabIdx >= 0) {
-      const inlineMatch = lines[estabIdx].match(/Establecimiento[:\s]+(.{4,})/i);
+    // Strategy 1: "Establecimiento" followed by whitespace/newline then a capitalized address/name line
+    const rawMatch = texto.match(/Establecimiento[\s\r\n]+([A-ZÁÉÍÓÚÑ][^\r\n]{3,})/i);
+    if (rawMatch) {
+      const candidate = rawMatch[1].replace(/\s+/g, ' ').trim();
+      if (
+        candidate.length > 3 &&
+        !/^\d+$/.test(candidate) &&
+        !/^(?:Rangos|Modalidad|Prefijo|Solicitud|Vigencia|Cod|Cód|30\.|31\.|32\.|33\.|34\.)/i.test(candidate) &&
+        !/AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N/i.test(candidate) &&
+        !/^FACTURA|^DOCUMENTO|^FACTURACI|^PAPEL|^COMPUTADOR|^SOPORTE/i.test(candidate)
+      ) {
+        establecimiento = candidate;
+      }
+    }
+  }
+
+  // Strategy 2: line-based scan around all occurrences of "Establecimiento"
+  if (!establecimiento) {
+    for (let ei = 0; ei < lines.length && !establecimiento; ei++) {
+      if (!/Establecimiento/i.test(lines[ei])) continue;
+
+      // Try inline value on the same line after the label
+      const inlineMatch = lines[ei].match(/Establecimiento[:\s]+(.{4,})/i);
       if (inlineMatch) {
-        establecimiento = inlineMatch[1].trim();
-      } else if (estabIdx + 1 < lines.length) {
-        const nextLine = lines[estabIdx + 1];
-        if (nextLine && nextLine.length > 3 && !/^\d+$/.test(nextLine) && !/Modalidad|Prefijo|Solicitud/i.test(nextLine)) {
-          establecimiento = nextLine;
+        const candidate = inlineMatch[1].trim();
+        if (candidate.length > 3 && !/^\d+$/.test(candidate) && !/^(?:Modalidad|Prefijo|Solicitud|Cod|Cód|30\.|31\.|32\.|33\.)/i.test(candidate)) {
+          establecimiento = candidate;
+          break;
         }
+      }
+
+      // Scan up to 8 subsequent lines for the actual value
+      for (let j = ei + 1; j < Math.min(ei + 9, lines.length); j++) {
+        const candidate = lines[j].trim();
+        if (!candidate || candidate.length <= 3) continue;
+        if (/^\d+$/.test(candidate)) continue;
+        if (/^\d\s+\d/.test(candidate)) continue;
+        if (/^\d{12,}/.test(candidate)) continue;
+        if (/^\d+\.\s+\w/.test(candidate)) continue;
+        if (/^(?:30\.|31\.|32\.|33\.|34\.|38\.|Modalidad|Prefijo|Solicitud|Vigencia|Cod|Cód|Rangos|Tipo)/i.test(candidate)) continue;
+        if (/AUTORIZACI[ÓO]N|HABILITACI[ÓO]N|INHABILITACI[ÓO]N/i.test(candidate)) break;
+        if (/^(FACTURA|DOCUMENTO|FACTURACI|PAPEL|COMPUTADOR|SOPORTE|D\.E|POS)/i.test(candidate)) break;
+        establecimiento = candidate;
+        break;
       }
     }
   }
@@ -294,7 +328,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
       direccion_registrada: false,
       resolucion_existe: false,
       pdf_temp: req.file ? path.basename(req.file.path) : '',
-      texto_extraido: texto.substring(0, 500)
+      texto_extraido: texto.substring(0, 1500)
     };
 
     // Check if resolution number already exists
