@@ -158,7 +158,7 @@ async function initDatabase(retries = 5) {
       `);
 
       // Seed default user (IG / 1973) — only if not exists
-      const bcrypt = require('bcrypt');
+      const bcrypt = require('bcryptjs');
       const existing = await client.query('SELECT id FROM usuarios WHERE usuario = $1', ['IG']);
       if (existing.rows.length === 0) {
         const hash = bcrypt.hashSync('1973', 10);
