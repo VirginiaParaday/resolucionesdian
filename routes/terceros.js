@@ -124,7 +124,7 @@ router.get('/', async (req, res) => {
         params.push(...Array(7).fill(`%${search}%`));
     }
     if (sort === 'nit') {
-        query += ' ORDER BY CAST(nit AS INTEGER) ASC';
+        query += ' ORDER BY CAST(NULLIF(regexp_replace(nit, \'[^0-9]\', \'\', \'g\'), \'\') AS BIGINT) ASC NULLS LAST';
     } else if (sort === 'nombre') {
         query += ` ORDER BY CASE WHEN tipo_persona='Juridica' THEN razon_social ELSE (COALESCE(primer_nombre,'') || ' ' || COALESCE(primer_apellido,'')) END ASC`;
     } else {
