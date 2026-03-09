@@ -115,8 +115,30 @@ function extraerDatosFormulario(texto) {
 
     // ESTABLECIMIENTO — line before the data row
     const matchedPattern = texto.match(patternA) ? patternA : texto.match(patternB) ? patternB : texto.match(patternA2) ? patternA2 : patternB2;
-    const dataLineIdx = lines.findIndex(l => matchedPattern.test(l));
+    let dataLineIdx = lines.findIndex(l => matchedPattern.test(l));
     console.log('[DEBUG] Pattern A/B dataLineIdx:', dataLineIdx, dataLineIdx >= 0 ? 'line content: ' + JSON.stringify(lines[dataLineIdx]) : '');
+
+    // Fallback: when the pattern matched across multiple lines in the full text,
+    // no single line matches → find the modalidad keyword line instead
+    if (dataLineIdx < 0) {
+      const modKeywordPatterns = [
+        /^FACTURA\s+ELECTR[ÓO]NICA/i,
+        /^DOCUMENTO\s+SOPORTE/i,
+        /^FACTURACI[ÓO]N/i,
+        /^FACTURA\s+DE\s+TALONARIO/i,
+        /^D\.?E\.?\s*\/?\s*P\.?O\.?S/i
+      ];
+      // Find the FIRST modalidad keyword that appears AFTER the NIT/name section (skip early lines)
+      const skipLines = Math.max(0, Math.floor(lines.length * 0.3));
+      for (let i = skipLines; i < lines.length; i++) {
+        if (modKeywordPatterns.some(p => p.test(lines[i]))) {
+          dataLineIdx = i;
+          console.log('[DEBUG] Fallback: found modalidad keyword at line', i, ':', JSON.stringify(lines[i]));
+          break;
+        }
+      }
+    }
+
     if (dataLineIdx > 0) {
       const prevLine = lines[dataLineIdx - 1];
       console.log('[DEBUG] Pattern A/B prevLine (line before data):', JSON.stringify(prevLine));
