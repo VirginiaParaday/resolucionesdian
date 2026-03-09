@@ -207,9 +207,9 @@ function extraerDatosFormulario(texto) {
 
         // Parse prefijo/desde/hasta from data lines before solicitud
         // Filter only meaningful data (not repeated modalidad lines, not "-- X of Y --")
-        const numericOrAlpha = dataBeforeSolicitud.filter(l => 
-          !modalidadPatterns.some(mp => mp.test(l)) && 
-          !/^--/.test(l) && 
+        const numericOrAlpha = dataBeforeSolicitud.filter(l =>
+          !modalidadPatterns.some(mp => mp.test(l)) &&
+          !/^--/.test(l) &&
           !/^\d{12,}$/.test(l) &&
           !/^\d\s+\d/.test(l) &&
           l.length < 50
@@ -419,7 +419,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: 'Error al procesar el PDF: ' + e.message });
     // Clean up temp file only on error
-    if (req.file && req.file.path) fs.unlink(req.file.path, () => {});
+    if (req.file && req.file.path) fs.unlink(req.file.path, () => { });
   }
   // Note: temp file is kept for deferred save on registration
 });
@@ -524,7 +524,7 @@ router.post('/guardar-resolucion-pdf', async (req, res) => {
       if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
       const destName = `${fecha_resolucion || 'sin-fecha'}-${numero_resolucion}.pdf`;
       fs.copyFileSync(tmpPath, path.join(pdfsDir, destName));
-      fs.unlink(tmpPath, () => {});
+      fs.unlink(tmpPath, () => { });
     }
 
     res.json({ ok: true });
@@ -552,7 +552,7 @@ router.post('/subir-pdf-temp', async (req, res) => {
     if (!fs.existsSync(pdfsDir)) fs.mkdirSync(pdfsDir, { recursive: true });
     const destName = `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`;
     fs.copyFileSync(tmpPath, path.join(pdfsDir, destName));
-    fs.unlink(tmpPath, () => {});
+    fs.unlink(tmpPath, () => { });
     res.json({ ok: true, nombre: destName });
   } catch (e) {
     res.status(500).json({ error: 'Error: ' + e.message });
@@ -575,7 +575,7 @@ router.post('/guardar-pdf', async (req, res) => {
     const destName = `${fecha_resolucion}-${numero_resolucion}.pdf`;
     const destPath = path.join(pdfsDir, destName);
     fs.copyFileSync(tmpPath, destPath);
-    fs.unlink(tmpPath, () => {});
+    fs.unlink(tmpPath, () => { });
     res.json({ ok: true, nombre: destName });
   } catch (e) {
     res.status(500).json({ error: 'Error al guardar el PDF: ' + e.message });
@@ -587,7 +587,7 @@ router.post('/subir-pdf/:id', uploadPdf.single('pdf'), async (req, res) => {
   try {
     const resolucion = await db.getAsync('SELECT fecha_resolucion, numero_resolucion FROM resoluciones WHERE id = ?', [req.params.id]);
     if (!resolucion) {
-      if (req.file) fs.unlink(req.file.path, () => {});
+      if (req.file) fs.unlink(req.file.path, () => { });
       return res.status(404).json({ error: 'Resolución no encontrada.' });
     }
 
@@ -606,11 +606,11 @@ router.post('/subir-pdf/:id', uploadPdf.single('pdf'), async (req, res) => {
 
     // Validate match
     if (!numFormulario) {
-      fs.unlink(req.file.path, () => {});
+      fs.unlink(req.file.path, () => { });
       return res.status(400).json({ error: 'No se pudo extraer el número de formulario del PDF.' });
     }
     if (numFormulario !== resolucion.numero_resolucion) {
-      fs.unlink(req.file.path, () => {});
+      fs.unlink(req.file.path, () => { });
       return res.status(400).json({ error: `El PDF corresponde a la resolución ${numFormulario}, pero esta resolución es ${resolucion.numero_resolucion}.` });
     }
 
@@ -620,10 +620,10 @@ router.post('/subir-pdf/:id', uploadPdf.single('pdf'), async (req, res) => {
     const destName = `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`;
     const destPath = path.join(pdfsDir, destName);
     fs.copyFileSync(req.file.path, destPath);
-    fs.unlink(req.file.path, () => {});
+    fs.unlink(req.file.path, () => { });
     res.json({ ok: true, nombre: destName });
   } catch (e) {
-    if (req.file) fs.unlink(req.file.path, () => {});
+    if (req.file) fs.unlink(req.file.path, () => { });
     res.status(500).json({ error: 'Error al subir el PDF: ' + e.message });
   }
 });
@@ -660,6 +660,7 @@ router.get('/', async (req, res) => {
       const hoyFilter = new Date();
       hoyFilter.setHours(0, 0, 0, 0);
       resoluciones = resoluciones.filter(r => {
+        if (r.checked) return false; // Exclude checked resolutions from vencimiento filter
         if (!r.fecha_resolucion || !r.vigencia) return false;
         const mv = parseInt(r.vigencia);
         if (isNaN(mv)) return false;
@@ -679,15 +680,16 @@ router.get('/', async (req, res) => {
     }
 
     const totalRow = await db.getAsync('SELECT COUNT(*) as cnt FROM resoluciones');
-    const allRows = await db.allAsync('SELECT solicitud, fecha_resolucion, vigencia FROM resoluciones');
+    const allRows = await db.allAsync('SELECT solicitud, fecha_resolucion, vigencia, checked FROM resoluciones');
     const countBySolicitud = (tipo) => allRows.filter(r => r.solicitud === tipo).length;
 
-    // Compute expiration stats
+    // Compute expiration stats (exclude checked resolutions)
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     let vencidasTotal = 0, vencidasHoy = 0, porVencer1 = 0, porVencer5 = 0, porVencer15 = 0, enVencimiento = 0;
 
     allRows.forEach(r => {
+      if (r.checked) return; // Skip checked resolutions
       if (!r.fecha_resolucion || !r.vigencia) return;
       const mv = parseInt(r.vigencia);
       if (isNaN(mv)) return;
@@ -728,7 +730,7 @@ router.get('/nueva', (req, res) => {
   const tmpDir = path.join(__dirname, '..', 'tmp');
   if (fs.existsSync(tmpDir)) {
     fs.readdir(tmpDir, (err, files) => {
-      if (!err) files.forEach(f => fs.unlink(path.join(tmpDir, f), () => {}));
+      if (!err) files.forEach(f => fs.unlink(path.join(tmpDir, f), () => { }));
     });
   }
   res.render('form', { resolucion: null, action: '/resoluciones', method: 'POST', title: 'Nueva Resolución', message });
@@ -760,7 +762,7 @@ router.post('/', async (req, res) => {
         const destPath = path.join(pdfsDir, destName);
         if (fs.existsSync(tmpPath)) {
           fs.copyFileSync(tmpPath, destPath);
-          fs.unlink(tmpPath, () => {});
+          fs.unlink(tmpPath, () => { });
         }
       } catch (pdfErr) {
         console.error('Error al guardar PDF:', pdfErr.message);
@@ -842,7 +844,7 @@ router.delete('/:id', async (req, res) => {
     // Delete associated PDF file
     if (resolucion) {
       const pdfPath = path.join(__dirname, '..', 'uploads', 'pdfs', 'Clients', 'Billing Resolutions', `${resolucion.fecha_resolucion}-${resolucion.numero_resolucion}.pdf`);
-      if (fs.existsSync(pdfPath)) fs.unlink(pdfPath, () => {});
+      if (fs.existsSync(pdfPath)) fs.unlink(pdfPath, () => { });
     }
     req.session.message = { type: 'success', text: 'Resolución eliminada.' };
   } catch (e) {
