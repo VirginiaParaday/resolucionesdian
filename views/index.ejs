@@ -134,10 +134,25 @@
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th>NIT</th>
-                        <th>Nombre</th>
+                        <th class="th-sortable" data-col="nit">
+                          <span class="th-sort-label">NIT</span>
+                          <button type="button" class="th-sort-btn" title="Ordenar por NIT" onclick="sortTable('nit', this)">
+                            <span class="sort-arrow">↕</span>
+                          </button>
+                        </th>
+                        <th class="th-sortable" data-col="nombre">
+                          <span class="th-sort-label">Nombre</span>
+                          <button type="button" class="th-sort-btn" title="Ordenar por Nombre" onclick="sortTable('nombre', this)">
+                            <span class="sort-arrow">↕</span>
+                          </button>
+                        </th>
                         <th>Resolución</th>
-                        <th>Fecha</th>
+                        <th class="th-sortable" data-col="fecha">
+                          <span class="th-sort-label">Fecha</span>
+                          <button type="button" class="th-sort-btn" title="Ordenar por Fecha" onclick="sortTable('fecha', this)">
+                            <span class="sort-arrow">↕</span>
+                          </button>
+                        </th>
                         <th>Modalidad</th>
                         <th>Solicitud</th>
                         <th>Establecimiento</th>
@@ -324,6 +339,71 @@
           document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
         }
       });
+      // ── Sort table ──
+      let currentSortCol = null;
+      let currentSortDir = 'asc';
+
+      function sortTable(col, btn) {
+        // Toggle direction
+        if (currentSortCol === col) {
+          currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSortCol = col;
+          currentSortDir = 'asc';
+        }
+
+        // Reset all sort buttons
+        document.querySelectorAll('.th-sort-btn').forEach(b => {
+          b.classList.remove('sort-active');
+          b.querySelector('.sort-arrow').textContent = '↕';
+        });
+
+        // Mark active
+        btn.classList.add('sort-active');
+        btn.querySelector('.sort-arrow').textContent = currentSortDir === 'asc' ? '↑' : '↓';
+
+        const tbody = document.querySelector('table tbody');
+        if (!tbody) return;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        // Column indices: nit=1, nombre=2, fecha=4 (0-indexed)
+        const colIndex = { nit: 1, nombre: 2, fecha: 4 };
+        const idx = colIndex[col];
+
+        rows.sort((a, b) => {
+          let va = a.cells[idx] ? a.cells[idx].textContent.trim() : '';
+          let vb = b.cells[idx] ? b.cells[idx].textContent.trim() : '';
+
+          if (col === 'nit') {
+            // Numeric sort
+            va = parseInt(va.replace(/\D/g, '')) || 0;
+            vb = parseInt(vb.replace(/\D/g, '')) || 0;
+            return currentSortDir === 'asc' ? va - vb : vb - va;
+          }
+
+          if (col === 'fecha') {
+            // Date format dd/mm/yyyy → comparable
+            const parseDate = s => {
+              const p = s.split('/');
+              return p.length === 3 ? new Date(p[2], p[1] - 1, p[0]) : new Date(0);
+            };
+            const da = parseDate(va);
+            const db = parseDate(vb);
+            return currentSortDir === 'asc' ? da - db : db - da;
+          }
+
+          // Alphabetic sort (nombre)
+          return currentSortDir === 'asc'
+            ? va.localeCompare(vb, 'es', { sensitivity: 'base' })
+            : vb.localeCompare(va, 'es', { sensitivity: 'base' });
+        });
+
+        // Re-number rows and reappend
+        rows.forEach((row, i) => {
+          row.cells[0].textContent = i + 1;
+          tbody.appendChild(row);
+        });
+      }
     </script>
 
 </body>

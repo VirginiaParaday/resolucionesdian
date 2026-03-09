@@ -577,6 +577,63 @@ thead th {
   white-space: nowrap;
 }
 
+/* SORTABLE HEADERS */
+.th-sortable {
+  position: relative;
+  cursor: default;
+}
+
+.th-sortable .th-sort-label {
+  display: inline;
+}
+
+.th-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 4px;
+  padding: 0;
+  vertical-align: middle;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.th-sortable:hover .th-sort-btn {
+  opacity: 1;
+}
+
+.th-sort-btn:hover {
+  background: rgba(49, 103, 202, 0.1);
+  border-color: var(--dian-blue);
+  color: var(--dian-blue);
+}
+
+.th-sort-btn.sort-active {
+  opacity: 1;
+  background: var(--dian-blue);
+  color: #fff;
+  border-color: var(--dian-blue);
+}
+
+.th-sort-btn.sort-active:hover {
+  background: var(--dian-purple);
+  border-color: var(--dian-purple);
+}
+
+.sort-arrow {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 tbody tr {
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
