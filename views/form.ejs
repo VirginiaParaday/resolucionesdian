@@ -304,9 +304,9 @@
 
         // Load addresses for a NIT
         function cargarDirecciones(nit) {
-          if (!nit) return;
+          if (!nit) return Promise.resolve([]);
           const nitClean = nit.replace(/-\d+$/, '').split('-')[0];
-          fetch('/terceros/api/direcciones/' + encodeURIComponent(nitClean))
+          return fetch('/terceros/api/direcciones/' + encodeURIComponent(nitClean))
             .then(r => r.json())
             .then(dirs => {
               // Update select
@@ -345,8 +345,9 @@
                   });
                 });
               }
+              return dirs;
             })
-            .catch(() => {});
+            .catch(() => []);
         }
 
         // Inline edit: transform row into input
@@ -585,19 +586,60 @@
                   currentNit = t.nit;
                   campos.push(`<strong>NIT:</strong> ${t.nit}${t.dv ? '-' + t.dv : ''} — ${t.nombre} ✅`);
 
-                  // Load and select address
-                  cargarDirecciones(t.nit);
-                  if (data.establecimiento) {
-                    // Wait a bit for addresses to load, then select
-                    setTimeout(() => {
-                      const opts = sucursalSelect.options;
+                  // Load addresses then select the one matching PDF field 29 (Establecimiento)
+                  cargarDirecciones(t.nit).then((dirs) => {
+                    // Normalize helper: collapse whitespace, lowercase, unify dash variants
+                    function normAddr(s) {
+                      return (s || '').trim().toLowerCase()
+                        .replace(/[\s\u00a0]+/g, ' ')
+                        .replace(/[–—]/g, '-');
+                    }
+
+                    console.log('[PDF] establecimiento:', JSON.stringify(data.establecimiento));
+                    console.log('[PDF] direcciones cargadas:', dirs ? dirs.map(d => JSON.stringify(d.direccion)) : '(none)');
+
+                    const est = normAddr(data.establecimiento);
+                    const opts = sucursalSelect.options;
+                    let found = false;
+                    let bestIdx = -1;
+
+                    if (est) {
+                      // Pass 1: exact normalized match
                       for (let i = 0; i < opts.length; i++) {
-                        if (opts[i].value.toLowerCase() === data.establecimiento.toLowerCase()) {
-                          sucursalSelect.selectedIndex = i;
-                          break;
+                        if (normAddr(opts[i].value) === est) {
+                          bestIdx = i; found = true; break;
                         }
                       }
-                    }, 800);
+                      // Pass 2: contains match (handles "COMPANY ADDR" vs just "ADDR")
+                      if (!found) {
+                        for (let i = 0; i < opts.length; i++) {
+                          const optVal = normAddr(opts[i].value);
+                          if (optVal && (optVal.includes(est) || est.includes(optVal))) {
+                            bestIdx = i; found = true; break;
+                          }
+                        }
+                      }
+                      if (found) {
+                        sucursalSelect.selectedIndex = bestIdx;
+                        console.log('[PDF] dirección seleccionada:', opts[bestIdx].value);
+                      } else if (data.direccion_registrada) {
+                        // Address was just inserted server-side; add option manually
+                        const opt = document.createElement('option');
+                        opt.value = data.establecimiento.trim();
+                        opt.textContent = data.establecimiento.trim();
+                        opt.selected = true;
+                        sucursalSelect.appendChild(opt);
+                        console.log('[PDF] dirección agregada manualmente:', opt.value);
+                      } else {
+                        console.warn('[PDF] establecimiento no coincidió con ninguna opción. est=', est, 'opciones=', Array.from(opts).map(o => normAddr(o.value)));
+                      }
+                    } else if (opts.length === 2) {
+                      // No establecimiento extracted but only one address exists — auto-select it
+                      sucursalSelect.selectedIndex = 1;
+                      console.log('[PDF] una sola dirección disponible, seleccionada automáticamente:', opts[1].value);
+                    }
+                  });
+                  if (data.establecimiento) {
                     campos.push(`<strong>Establecimiento:</strong> ${data.establecimiento}${data.direccion_registrada ? ' <em>(registrada automáticamente)</em>' : ''}`);
                   }
                 } else if (data.nit) {

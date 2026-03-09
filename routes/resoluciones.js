@@ -118,8 +118,16 @@ function extraerDatosFormulario(texto) {
     const dataLineIdx = lines.findIndex(l => matchedPattern.test(l));
     if (dataLineIdx > 0) {
       const prevLine = lines[dataLineIdx - 1];
-      if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !prevLine.includes('Establecimiento')) {
-        establecimiento = prevLine;
+      if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine)) {
+        if (!prevLine.includes('Establecimiento')) {
+          establecimiento = prevLine;
+        } else {
+          // Value may be inline after the label (e.g. "29. Establecimiento CALLE 45 ...")
+          const inlineMatch = prevLine.match(/Establecimiento[:\s]+(.+)/i);
+          if (inlineMatch && inlineMatch[1].trim().length > 3) {
+            establecimiento = inlineMatch[1].trim();
+          }
+        }
       }
     }
   } else {
@@ -195,8 +203,31 @@ function extraerDatosFormulario(texto) {
       // ESTABLECIMIENTO — line before the modalidad line
       if (modIdx > 0) {
         const prevLine = lines[modIdx - 1];
-        if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !prevLine.includes('Establecimiento') && !/^\d\s+\d/.test(prevLine)) {
-          establecimiento = prevLine;
+        if (prevLine && prevLine.length > 3 && !/^\d+$/.test(prevLine) && !/^\d\s+\d/.test(prevLine)) {
+          if (!prevLine.includes('Establecimiento')) {
+            establecimiento = prevLine;
+          } else {
+            const inlineMatch = prevLine.match(/Establecimiento[:\s]+(.+)/i);
+            if (inlineMatch && inlineMatch[1].trim().length > 3) {
+              establecimiento = inlineMatch[1].trim();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Global fallback: explicitly search for "Establecimiento" label anywhere in the text
+  if (!establecimiento) {
+    const estabIdx = lines.findIndex(l => /Establecimiento/i.test(l));
+    if (estabIdx >= 0) {
+      const inlineMatch = lines[estabIdx].match(/Establecimiento[:\s]+(.{4,})/i);
+      if (inlineMatch) {
+        establecimiento = inlineMatch[1].trim();
+      } else if (estabIdx + 1 < lines.length) {
+        const nextLine = lines[estabIdx + 1];
+        if (nextLine && nextLine.length > 3 && !/^\d+$/.test(nextLine) && !/Modalidad|Prefijo|Solicitud/i.test(nextLine)) {
+          establecimiento = nextLine;
         }
       }
     }
@@ -215,6 +246,11 @@ function extraerDatosFormulario(texto) {
       numero_formulario = num;
       break;
     }
+  }
+
+  // Normalize establecimiento: collapse multiple spaces that PDF extraction can introduce
+  if (establecimiento) {
+    establecimiento = establecimiento.replace(/\s+/g, ' ').trim();
   }
 
   return { nit, dv, fecha_resolucion, modalidad, prefijo, desde, hasta, solicitud, vigencia, establecimiento, numero_formulario };
