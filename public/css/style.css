@@ -49,7 +49,7 @@ body {
 }
 
 .header-inner {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 10px 24px;
   position: relative;
@@ -163,7 +163,7 @@ body {
 
 /* MAIN */
 .main {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 28px 24px;
 }
@@ -233,7 +233,7 @@ body {
   box-shadow: var(--shadow);
 }
 
-.filters > .btn {
+.filters>.btn {
   height: 35px;
   align-self: flex-end;
 }

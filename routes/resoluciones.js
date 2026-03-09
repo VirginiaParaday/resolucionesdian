@@ -47,7 +47,9 @@ function extraerDatosFormulario(texto) {
   let nit = '', dv = '';
   for (const rawLine of rawLines) {
     const l = rawLine.trim();
-    if (/^\d( \d){7,11}$/.test(l)) {
+    // Match lines that contain only digits separated by spaces (handles single/double/multiple spaces
+    // and possibly grouped last digits like "9  0  1  9  6  8  7  9  51")
+    if (/^[\d\s]+$/.test(l) && /\d\s+\d/.test(l)) {
       const cleaned = l.replace(/\s+/g, '');
       if (cleaned.length >= 8 && cleaned.length <= 12) {
         nit = cleaned.slice(0, -1);

@@ -140,6 +140,7 @@
                         <th>Fecha</th>
                         <th>Modalidad</th>
                         <th>Solicitud</th>
+                        <th>Establecimiento</th>
                         <th>Prefijo</th>
                         <th>Desde</th>
                         <th>Hasta</th>
@@ -194,6 +195,9 @@
               %>">
                               <%= r.solicitud %>
                             </span>
+                          </td>
+                          <td style="font-size:12px">
+                            <%= r.sucursal || '—' %>
                           </td>
                           <td class="td-num">
                             <%= r.prefijo || '—' %>
