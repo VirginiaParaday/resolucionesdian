@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const multer = require('multer');
-const { PDFParse } = require('pdf-parse');
+const pdfParse = require('pdf-parse');
 const path = require('path');
 const fs = require('fs');
 
@@ -226,9 +226,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
 
   try {
     const buffer = fs.readFileSync(req.file.path);
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const data = await parser.getText();
-    await parser.destroy();
+    const data = await pdfParse(buffer);
     const texto = data.text || '';
 
     // DEBUG
@@ -323,9 +321,7 @@ router.post('/validar-pdfs', uploadPdf.array('pdfs', 50), async (req, res) => {
     for (const file of (req.files || [])) {
       try {
         const buffer = fs.readFileSync(file.path);
-        const parser = new PDFParse({ data: new Uint8Array(buffer) });
-        const pdfData = await parser.getText();
-        await parser.destroy();
+        const pdfData = await pdfParse(buffer);
         const texto = pdfData.text || '';
 
         // Extract all fields using the shared parser
@@ -487,9 +483,7 @@ router.post('/subir-pdf/:id', uploadPdf.single('pdf'), async (req, res) => {
 
     // Parse PDF to validate formulario number (same pattern as parsear-pdf)
     const buffer = fs.readFileSync(req.file.path);
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const pdfData = await parser.getText();
-    await parser.destroy();
+    const pdfData = await pdfParse(buffer);
     const texto = pdfData.text || '';
 
     // Extract numero_formulario (12+ digit number on its own line)
