@@ -185,7 +185,8 @@
                             <%= i + 1 %>
                           </td>
                           <td class="td-num">
-                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.nit ? r.nit.split('-')[0] : '' %></span>
+                            <% const _nitClean = r.nit ? r.nit.split('-')[0] : ''; %>
+                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= Number(_nitClean) ? Number(_nitClean).toLocaleString('es-CO') : _nitClean %></span>
                           </td>
                           <td>
                             <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.nombre_tercero %></span>

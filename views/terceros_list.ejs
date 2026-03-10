@@ -98,7 +98,7 @@
                                                         <%= i + 1 %>
                                                     </td>
                                                     <td class="td-num">
-                                                        <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= t.nit %></span>
+                                                        <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= Number(t.nit) ? Number(t.nit).toLocaleString('es-CO') : t.nit %></span>
                                                     </td>
                                                     <td class="td-num">
                                                         <%= t.dv || '—' %>
