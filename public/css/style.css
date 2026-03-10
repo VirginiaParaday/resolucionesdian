@@ -9,6 +9,7 @@
   --surface: #FFFFFF;
   --border: #DDE2EC;
   --text: #1A2340;
+  --text-page: #566083;
   --muted: #6B7A99;
   --success: #1A7A4A;
   --success-bg: #E8F5EE;
@@ -16,6 +17,7 @@
   --error-bg: #FDECEA;
   --dian-purple: #7f53cc;
   --dian-goldes: #FF759A;
+  --dian-blue-page: #797c83;
   --shadow: 0 2px 12px rgba(0, 48, 135, 0.08);
   --radius: 8px;
 }
@@ -1484,6 +1486,55 @@ tbody tr:hover .btn-toggle-actions,
   color: var(--muted);
   margin-top: 10px;
   font-style: italic;
+}
+
+
+/* PAGINATION */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-page);
+  background: var(--surface);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:hover:not(.active):not(.disabled) {
+  background: var(--bg);
+  border-color: var(--dian-blue);
+  color: var(--dian-blue);
+}
+
+.pagination-btn.active {
+  background: var(--dian-blue-page);
+  border-color: var(---dian-blue-page);
+  color: #fff;
+  font-weight: 700;
+  cursor: default;
+}
+
+.pagination-btn.disabled {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: default;
 }
 
 @media (max-width: 768px) {

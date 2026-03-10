@@ -699,6 +699,8 @@ router.get('/', async (req, res) => {
   const modalidad = req.query.modalidad || '';
   const solicitud = req.query.solicitud || '';
   const vencimiento = req.query.vencimiento || '';
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const perPage = 10;
 
   let query = 'SELECT * FROM resoluciones WHERE 1=1';
   const params = [];
@@ -744,6 +746,13 @@ router.get('/', async (req, res) => {
       });
     }
 
+    // Pagination
+    const totalFiltered = resoluciones.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / perPage));
+    const currentPage = Math.min(page, totalPages);
+    const startIndex = (currentPage - 1) * perPage;
+    resoluciones = resoluciones.slice(startIndex, startIndex + perPage);
+
     const totalRow = await db.getAsync('SELECT COUNT(*) as cnt FROM resoluciones');
     const allRows = await db.allAsync('SELECT solicitud, fecha_resolucion, vigencia, checked FROM resoluciones');
     const countBySolicitud = (tipo) => allRows.filter(r => r.solicitud === tipo).length;
@@ -774,6 +783,7 @@ router.get('/', async (req, res) => {
     res.render('index', {
       resoluciones,
       search, modalidad, solicitud, vencimiento,
+      currentPage, totalPages, totalFiltered, startIndex,
       total: totalRow.cnt,
       totalAuth: countBySolicitud('Autorización'),
       totalHab: countBySolicitud('Habilitación'),
