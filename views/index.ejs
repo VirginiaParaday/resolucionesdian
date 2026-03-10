@@ -3,406 +3,429 @@
 
 <%- include('partials/head', { pageTitle: 'Listado' }) %>
 
-<body>
+  <body>
 
-  <%- include('partials/header', { navLinks: [
-    { href: '/terceros', label: 'Terceros' },
-    { href: '/resoluciones/nueva', label: 'Nueva Resolución' },
-    { href: '/resoluciones', label: 'Listado', active: true }
-  ] }) %>
+    <%- include('partials/header', { navLinks: [ { href: '/terceros' , label: 'Terceros' }, {
+      href: '/resoluciones/nueva' , label: 'Nueva Resolución' }, { href: '/resoluciones' , label: 'Listado' , active:
+      true } ] }) %>
 
-    <main class="main">
+      <main class="main">
 
-      <% if (message) { %>
-        <div class="alert alert-<%= message.type %>">
-          <span>
-            <%= message.type==='success' ? '✓' : '✕' %>
-          </span>
-          <%= message.text %>
-        </div>
-        <% } %>
-
-          <div class="page-header">
-            <div class="page-title">Registro de Resoluciones</div>
-            <div class="page-subtitle">Gestión y control de resoluciones de facturación</div>
+        <% if (message) { %>
+          <div class="alert alert-<%= message.type %>">
+            <span>
+              <%= message.type==='success' ? '✓' : '✕' %>
+            </span>
+            <%= message.text %>
           </div>
+          <% } %>
+
+            <div class="page-header">
+              <div class="page-title">Registro de Resoluciones</div>
+              <div class="page-subtitle">Gestión y control de resoluciones de facturación</div>
+            </div>
 
 
-          <div class="stats" style="margin-top:8px">
-            <div class="stat-card" style="border-left:3px solid #e74c3c">
-              <div class="stat-num" style="color:#e74c3c">
-                <%= vencidasTotal %>
-              </div>
-              <div class="stat-label">Vencidas (Total)</div>
-            </div>
-            <div class="stat-card" style="border-left:3px solid #c0392b">
-              <div class="stat-num" style="color:#c0392b">
-                <%= vencidasHoy %>
-              </div>
-              <div class="stat-label">Vencen Hoy</div>
-            </div>
-            <div class="stat-card" style="border-left:3px solid #e67e22">
-              <div class="stat-num" style="color:#e67e22">
-                <%= porVencer1 %>
-              </div>
-              <div class="stat-label">Por vencer en 1 día</div>
-            </div>
-            <div class="stat-card" style="border-left:3px solid #f39c12">
-              <div class="stat-num" style="color:#f39c12">
-                <%= porVencer5 %>
-              </div>
-              <div class="stat-label">Por vencer en 5 días</div>
-            </div>
-            <div class="stat-card" style="border-left:3px solid #f1c40f">
-              <div class="stat-num" style="color:#d4ac0d">
-                <%= porVencer15 %>
-              </div>
-              <div class="stat-label">Por vencer en 15 días</div>
-            </div>
-            <div class="stat-card" style="border-left:3px solid #3498db">
-              <div class="stat-num" style="color:#3498db">
-                <%= enVencimiento %>
-              </div>
-              <div class="stat-label">En Vencimiento</div>
-            </div>
-          </div>
-
-          <form method="GET" action="/resoluciones" class="filters">
-            <div class="filter-group">
-              <label>Buscar</label>
-              <input type="text" name="search" value="<%= search %>" placeholder="NIT, nombre, resolución, prefijo...">
-            </div>
-            <div class="filter-group">
-              <label>Modalidad</label>
-              <select name="modalidad">
-                <option value="">Todas</option>
-                <option value="D.E. / P.O.S." <%=modalidad==='D.E. / P.O.S.' ? 'selected' : '' %>>D.E. / P.O.S.</option>
-                <option value="Documento soporte" <%=modalidad==='Documento soporte' ? 'selected' : '' %>>Documento
-                  soporte</option>
-                <option value="Facturación computador" <%=modalidad==='Facturación computador' ? 'selected' : '' %>
-                  >Facturación computador</option>
-                <option value="Facturación de papel" <%=modalidad==='Facturación de papel' ? 'selected' : '' %>
-                  >Facturación de papel</option>
-                <option value="Factura de talonario o de papel" <%=modalidad==='Factura de talonario o de papel'
-                  ? 'selected' : '' %>>Factura de talonario</option>
-                <option value="Factura electrónica de venta" <%=modalidad==='Factura electrónica de venta' ? 'selected'
-                  : '' %>>Factura electrónica</option>
-              </select>
-            </div>
-            <div class="filter-group">
-              <label>Solicitud</label>
-              <select name="solicitud">
-                <option value="">Todas</option>
-                <option value="Autorización" <%=solicitud==='Autorización' ? 'selected' : '' %>>Autorización</option>
-                <option value="Habilitación" <%=solicitud==='Habilitación' ? 'selected' : '' %>>Habilitación</option>
-                <option value="Inhabilitación" <%=solicitud==='Inhabilitación' ? 'selected' : '' %>>Inhabilitación
-                </option>
-              </select>
-            </div>
-            <div class="filter-group">
-              <label>Vencimiento</label>
-              <select name="vencimiento">
-                <option value="">Todas</option>
-                <option value="vencidas" <%=vencimiento==='vencidas' ? 'selected' : '' %>>Vencidas (Total)</option>
-                <option value="hoy" <%=vencimiento==='hoy' ? 'selected' : '' %>>Vencen hoy</option>
-                <option value="1dia" <%=vencimiento==='1dia' ? 'selected' : '' %>>Por vencer en 1 día</option>
-                <option value="15dias" <%=vencimiento==='15dias' ? 'selected' : '' %>>Por vencer en 15 días</option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-primary">Filtrar</button>
-            <% if (search || modalidad || solicitud || vencimiento) { %>
-              <a href="/resoluciones" class="btn btn-ghost">Limpiar</a>
-              <% } %>
-          </form>
-
-          <div class="table-card">
-            <div class="table-header">
-              <span class="table-title">Listado de Resoluciones</span>
-              <span class="table-count">
-                <%= resoluciones.length %> registro<%= resoluciones.length !==1 ? 's' : '' %>
-              </span>
-            </div>
-            <div class="table-wrap">
-              <% if (resoluciones.length===0) { %>
-                <div class="empty-state">
-                  <div class="icon">📄</div>
-                  <p>No se encontraron resoluciones</p>
-                  <span>Registre una nueva resolución o ajuste los filtros de búsqueda</span>
+            <div class="stats" style="margin-top:8px">
+              <div class="stat-card" style="border-left:3px solid #e74c3c">
+                <div class="stat-num" style="color:#e74c3c">
+                  <%= vencidasTotal %>
                 </div>
-                <% } else { %>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th class="th-sortable" data-col="nit">
-                          <span class="th-sort-label">NIT</span>
-                          <button type="button" class="th-sort-btn" title="Ordenar por NIT" onclick="sortTable('nit', this)">
-                            <span class="sort-arrow">↕</span>
-                          </button>
-                        </th>
-                        <th class="th-sortable" data-col="nombre">
-                          <span class="th-sort-label">Nombre</span>
-                          <button type="button" class="th-sort-btn" title="Ordenar por Nombre" onclick="sortTable('nombre', this)">
-                            <span class="sort-arrow">↕</span>
-                          </button>
-                        </th>
-                        <th>Resolución</th>
-                        <th class="th-sortable" data-col="fecha">
-                          <span class="th-sort-label">Fecha</span>
-                          <button type="button" class="th-sort-btn" title="Ordenar por Fecha" onclick="sortTable('fecha', this)">
-                            <span class="sort-arrow">↕</span>
-                          </button>
-                        </th>
-                        <th>Modalidad</th>
-                        <th>Solicitud</th>
-                        <th>Establecimiento</th>
-                        <th>Prefijo</th>
-                        <th>Desde</th>
-                        <th>Hasta</th>
-                        <th>Vigencia</th>
-                        <th>Vencimiento</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <% resoluciones.forEach((r, i)=> {
-                        // Calculate days until expiry for row coloring (skip if checked)
-                        let _rowBg = '';
-                        const _vig = parseInt(r.vigencia);
-                        if (!r.checked && !isNaN(_vig) && r.fecha_resolucion) {
+                <div class="stat-label">Vencidas (Total)</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #c0392b">
+                <div class="stat-num" style="color:#c0392b">
+                  <%= vencidasHoy %>
+                </div>
+                <div class="stat-label">Vencen Hoy</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #e67e22">
+                <div class="stat-num" style="color:#e67e22">
+                  <%= porVencer1 %>
+                </div>
+                <div class="stat-label">Por vencer en 1 día</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #f39c12">
+                <div class="stat-num" style="color:#f39c12">
+                  <%= porVencer5 %>
+                </div>
+                <div class="stat-label">Por vencer en 5 días</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #f1c40f">
+                <div class="stat-num" style="color:#d4ac0d">
+                  <%= porVencer15 %>
+                </div>
+                <div class="stat-label">Por vencer en 15 días</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #3498db">
+                <div class="stat-num" style="color:#3498db">
+                  <%= enVencimiento %>
+                </div>
+                <div class="stat-label">En Vencimiento</div>
+              </div>
+            </div>
+
+            <form method="GET" action="/resoluciones" class="filters">
+              <div class="filter-group">
+                <label>Buscar</label>
+                <input type="text" name="search" value="<%= search %>"
+                  placeholder="NIT, nombre, resolución, prefijo...">
+              </div>
+              <div class="filter-group">
+                <label>Modalidad</label>
+                <select name="modalidad">
+                  <option value="">Todas</option>
+                  <option value="D.E. / P.O.S." <%=modalidad==='D.E. / P.O.S.' ? 'selected' : '' %>>D.E. / P.O.S.
+                  </option>
+                  <option value="Documento soporte" <%=modalidad==='Documento soporte' ? 'selected' : '' %>>Documento
+                    soporte</option>
+                  <option value="Facturación computador" <%=modalidad==='Facturación computador' ? 'selected' : '' %>
+                    >Facturación computador</option>
+                  <option value="Facturación de papel" <%=modalidad==='Facturación de papel' ? 'selected' : '' %>
+                    >Facturación de papel</option>
+                  <option value="Factura de talonario o de papel" <%=modalidad==='Factura de talonario o de papel'
+                    ? 'selected' : '' %>>Factura de talonario</option>
+                  <option value="Factura electrónica de venta" <%=modalidad==='Factura electrónica de venta'
+                    ? 'selected' : '' %>>Factura electrónica</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Solicitud</label>
+                <select name="solicitud">
+                  <option value="">Todas</option>
+                  <option value="Autorización" <%=solicitud==='Autorización' ? 'selected' : '' %>>Autorización</option>
+                  <option value="Habilitación" <%=solicitud==='Habilitación' ? 'selected' : '' %>>Habilitación</option>
+                  <option value="Inhabilitación" <%=solicitud==='Inhabilitación' ? 'selected' : '' %>>Inhabilitación
+                  </option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Vencimiento</label>
+                <select name="vencimiento">
+                  <option value="">Todas</option>
+                  <option value="vencidas" <%=vencimiento==='vencidas' ? 'selected' : '' %>>Vencidas (Total)</option>
+                  <option value="hoy" <%=vencimiento==='hoy' ? 'selected' : '' %>>Vencen hoy</option>
+                  <option value="1dia" <%=vencimiento==='1dia' ? 'selected' : '' %>>Por vencer en 1 día</option>
+                  <option value="15dias" <%=vencimiento==='15dias' ? 'selected' : '' %>>Por vencer en 15 días</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">Filtrar</button>
+              <% if (search || modalidad || solicitud || vencimiento) { %>
+                <a href="/resoluciones" class="btn btn-ghost">Limpiar</a>
+                <% } %>
+            </form>
+
+            <div class="table-card">
+              <div class="table-header">
+                <span class="table-title">Listado de Resoluciones</span>
+                <span class="table-count">
+                  <%= resoluciones.length %> registro<%= resoluciones.length !==1 ? 's' : '' %>
+                </span>
+              </div>
+              <div class="table-wrap">
+                <% if (resoluciones.length===0) { %>
+                  <div class="empty-state">
+                    <div class="icon">📄</div>
+                    <p>No se encontraron resoluciones</p>
+                    <span>Registre una nueva resolución o ajuste los filtros de búsqueda</span>
+                  </div>
+                  <% } else { %>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th class="th-sortable" data-col="nit">
+                            <span class="th-sort-label">NIT</span>
+                            <button type="button" class="th-sort-btn" title="Ordenar por NIT"
+                              onclick="sortTable('nit', this)">
+                              <span class="sort-arrow">↕</span>
+                            </button>
+                          </th>
+                          <th class="th-sortable" data-col="nombre">
+                            <span class="th-sort-label">Nombre</span>
+                            <button type="button" class="th-sort-btn" title="Ordenar por Nombre"
+                              onclick="sortTable('nombre', this)">
+                              <span class="sort-arrow">↕</span>
+                            </button>
+                          </th>
+                          <th>Resolución</th>
+                          <th class="th-sortable" data-col="fecha">
+                            <span class="th-sort-label">Fecha</span>
+                            <button type="button" class="th-sort-btn" title="Ordenar por Fecha"
+                              onclick="sortTable('fecha', this)">
+                              <span class="sort-arrow">↕</span>
+                            </button>
+                          </th>
+                          <th>Modalidad</th>
+                          <th>Solicitud</th>
+                          <th>Establecimiento</th>
+                          <th>Prefijo</th>
+                          <th>Desde</th>
+                          <th>Hasta</th>
+                          <th>Vigencia</th>
+                          <th>Vencimiento</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% resoluciones.forEach((r, i)=> {
+                          // Helper: format number with dots as thousands separator
+                          function _fmt(n) { return n == null ? '—' : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+                          // Calculate days until expiry for row coloring (skip if checked)
+                          let _rowBg = '';
+                          const _vig = parseInt(r.vigencia);
+                          if (!r.checked && !isNaN(_vig) && r.fecha_resolucion) {
                           const _hoy = new Date(); _hoy.setHours(0,0,0,0);
                           const _fv = new Date(r.fecha_resolucion + 'T00:00:00');
                           _fv.setMonth(_fv.getMonth() + _vig);
                           const _diff = Math.ceil((_fv - _hoy) / (1000*60*60*24));
-                          if (_diff < 0) _rowBg = 'background:rgba(231,76,60,0.10);';       // Vencida
-                          else if (_diff === 0) _rowBg = 'background:rgba(192,57,43,0.15);';  // Vence hoy
-                          else if (_diff === 1) _rowBg = 'background:rgba(230,126,34,0.12);'; // 1 día
-                          else if (_diff <= 5) _rowBg = 'background:rgba(241,196,15,0.12);';  // ≤5 días
-                        }
-                      %>
-                        <tr style="<%= _rowBg %>">
-                          <td class="td-num" style="color:var(--muted)">
-                            <%= i + 1 %>
-                          </td>
-                          <td class="td-num">
-                            <% const _nitClean = r.nit ? r.nit.split('-')[0] : ''; %>
-                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= Number(_nitClean) ? Number(_nitClean).toLocaleString('es-CO') : _nitClean %></span>
-                          </td>
-                          <td>
-                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.nombre_tercero %></span>
-                          </td>
-                          <td class="td-num">
-                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.numero_resolucion %></span>
-                          </td>
-                          <td style="white-space:nowrap">
-                            <% if (r.fecha_resolucion) { const _fp=r.fecha_resolucion.split('-'); %>
-                              <%= _fp[2] %>/<%= _fp[1] %>/<%= _fp[0] %>
-                                    <% } else { %>—<% } %>
-                          </td>
-                          <td>
-                            <span class="badge badge-modal">
-                              <%= r.modalidad %>
-                            </span>
-                          </td>
-                          <td>
-                            <span class="badge <%=
+                          if (_diff < 0) _rowBg='background:rgba(231,76,60,0.10);' ; else if (_diff===0)
+                            _rowBg='background:rgba(192,57,43,0.15);' ; else if (_diff===1)
+                            _rowBg='background:rgba(230,126,34,0.12);' ; else if (_diff <=5)
+                            _rowBg='background:rgba(241,196,15,0.12);' ; } %>
+                            <tr style="<%= _rowBg %>">
+                              <td class="td-num" style="color:var(--muted)">
+                                <%= i + 1 %>
+                              </td>
+                              <td class="td-num">
+                                <% const _nitClean=r.nit ? r.nit.split('-')[0] : '' ; %>
+                                  <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)">
+                                    <%= Number(_nitClean) ? _fmt(_nitClean) : _nitClean %>
+                                  </span>
+                              </td>
+                              <td>
+                                <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)">
+                                  <%= r.nombre_tercero %>
+                                </span>
+                              </td>
+                              <td class="td-num">
+                                <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)">
+                                  <%= r.numero_resolucion %>
+                                </span>
+                              </td>
+                              <td style="white-space:nowrap">
+                                <% if (r.fecha_resolucion) { const _fp=r.fecha_resolucion.split('-'); %>
+                                  <%= _fp[2] %>/<%= _fp[1] %>/<%= _fp[0] %>
+                                        <% } else { %>—<% } %>
+                              </td>
+                              <td>
+                                <span class="badge badge-modal">
+                                  <%= r.modalidad %>
+                                </span>
+                              </td>
+                              <td>
+                                <span class="badge <%=
                 r.solicitud === 'Autorización' ? 'badge-auth' :
                 r.solicitud === 'Habilitación' ? 'badge-hab' : 'badge-inhab'
               %>">
-                              <%= r.solicitud %>
-                            </span>
-                          </td>
-                          <td style="font-size:12px">
-                            <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= r.sucursal || '—' %></span>
-                          </td>
-                          <td class="td-num">
-                            <%= r.prefijo || '—' %>
-                          </td>
-                          <td style="white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:12px">
-                            <%= r.desde %>
-                          </td>
-                          <td style="white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:12px">
-                            <%= r.hasta %>
-                          </td>
-                          <td style="font-size:13px;white-space:nowrap">
-                            <%= r.vigencia %> mes<%= r.vigencia==1 ? '' : 'es' %>
-                          </td>
-                          <td class="td-vencimiento" style="font-size:13px;white-space:nowrap" data-id="<%= r.id %>">
-                            <% if (!r.checked) { %>
-                              <% const mv=parseInt(r.vigencia); if (!isNaN(mv) && r.fecha_resolucion) { const bv=new
-                                Date(r.fecha_resolucion + 'T00:00:00' ); bv.setMonth(bv.getMonth() + mv); const
-                                dv=String(bv.getDate()).padStart(2,'0'); const
-                                mv2=String(bv.getMonth()+1).padStart(2,'0'); const av=bv.getFullYear(); %>
-                                <%= dv %>/<%= mv2 %>/<%= av %>
-                                      <% } else { %>—<% } %>
-                            <% } else { %>—<% } %>
-                          </td>
-                          <td>
-                            <div class="actions-wrapper">
-                              <button type="button" class="btn btn-sm btn-toggle-actions" title="Acciones" onclick="toggleActions(this)">
-                                <span class="toggle-icon">+</span>
-                              </button>
-                              <div class="actions-panel">
-                                <% if (r.has_pdf) { %>
-                                  <a href="/uploads/pdfs/Clients/Billing Resolutions/<%= r.fecha_resolucion %>-<%= r.numero_resolucion %>.pdf" target="_blank" class="btn btn-sm btn-outline" title="Ver PDF" style="color:#E67E22;border-color:#E67E22">📁</a>
-                                <% } else { %>
-                                  <input type="file" id="pdfUpload_<%= r.id %>" accept=".pdf" style="display:none" onchange="subirPdfResolucion(<%= r.id %>, this)">
-                                  <button type="button" class="btn btn-sm btn-outline" title="Subir PDF" style="color:#3498db;border-color:#3498db" onclick="document.getElementById('pdfUpload_<%= r.id %>').click()">📤</button>
-                                <% } %>
-                                <a href="/resoluciones/<%= r.id %>" class="btn btn-sm btn-outline"
-                                  title="Ver detalle">👁</a>
-                                <button type="button" class="btn btn-sm btn-check-toggle <%= r.checked ? 'checked' : '' %>"
-                                  title="Marcar" data-id="<%= r.id %>" onclick="toggleCheck(this)">
-                                  <span class="check-icon"><%= r.checked ? '☑' : '☐' %></span>
-                                </button>
-                                <a href="/resoluciones/<%= r.id %>/editar" class="btn btn-sm btn-gold"
-                                  title="Editar">✏️</a>
-                                <form method="POST" action="/resoluciones/<%= r.id %>?_method=DELETE"
-                                  style="display:inline" onsubmit="return confirm('¿Eliminar esta resolución?')">
-                                  <button type="submit" class="btn btn-sm btn-danger" title="Eliminar">🗑</button>
-                                </form>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                        <% }); %>
-                    </tbody>
-                  </table>
-                  <% } %>
+                                  <%= r.solicitud %>
+                                </span>
+                              </td>
+                              <td style="font-size:12px">
+                                <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)">
+                                  <%= r.sucursal || '—' %>
+                                </span>
+                              </td>
+                              <td class="td-num">
+                                <%= r.prefijo || '—' %>
+                              </td>
+                              <td style="white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:12px">
+                                <%= _fmt(r.desde) %>
+                              </td>
+                              <td style="white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:12px">
+                                <%= _fmt(r.hasta) %>
+                              </td>
+                              <td style="font-size:13px;white-space:nowrap">
+                                <%= r.vigencia %> mes<%= r.vigencia==1 ? '' : 'es' %>
+                              </td>
+                              <td class="td-vencimiento" style="font-size:13px;white-space:nowrap"
+                                data-id="<%= r.id %>">
+                                <% if (!r.checked) { %>
+                                  <% const mv=parseInt(r.vigencia); if (!isNaN(mv) && r.fecha_resolucion) { const bv=new
+                                    Date(r.fecha_resolucion + 'T00:00:00' ); bv.setMonth(bv.getMonth() + mv); const
+                                    dv=String(bv.getDate()).padStart(2,'0'); const
+                                    mv2=String(bv.getMonth()+1).padStart(2,'0'); const av=bv.getFullYear(); %>
+                                    <%= dv %>/<%= mv2 %>/<%= av %>
+                                          <% } else { %>—<% } %>
+                                              <% } else { %>—<% } %>
+                              </td>
+                              <td>
+                                <div class="actions-wrapper">
+                                  <button type="button" class="btn btn-sm btn-toggle-actions" title="Acciones"
+                                    onclick="toggleActions(this)">
+                                    <span class="toggle-icon">+</span>
+                                  </button>
+                                  <div class="actions-panel">
+                                    <% if (r.has_pdf) { %>
+                                      <a href="/uploads/pdfs/Clients/Billing Resolutions/<%= r.fecha_resolucion %>-<%= r.numero_resolucion %>.pdf"
+                                        target="_blank" class="btn btn-sm btn-outline" title="Ver PDF"
+                                        style="color:#E67E22;border-color:#E67E22">📁</a>
+                                      <% } else { %>
+                                        <input type="file" id="pdfUpload_<%= r.id %>" accept=".pdf" style="display:none"
+                                          onchange="subirPdfResolucion(<%= r.id %>, this)">
+                                        <button type="button" class="btn btn-sm btn-outline" title="Subir PDF"
+                                          style="color:#3498db;border-color:#3498db"
+                                          onclick="document.getElementById('pdfUpload_<%= r.id %>').click()">📤</button>
+                                        <% } %>
+                                          <a href="/resoluciones/<%= r.id %>" class="btn btn-sm btn-outline"
+                                            title="Ver detalle">👁</a>
+                                          <button type="button"
+                                            class="btn btn-sm btn-check-toggle <%= r.checked ? 'checked' : '' %>"
+                                            title="Marcar" data-id="<%= r.id %>" onclick="toggleCheck(this)">
+                                            <span class="check-icon">
+                                              <%= r.checked ? '☑' : '☐' %>
+                                            </span>
+                                          </button>
+                                          <a href="/resoluciones/<%= r.id %>/editar" class="btn btn-sm btn-gold"
+                                            title="Editar">✏️</a>
+                                          <form method="POST" action="/resoluciones/<%= r.id %>?_method=DELETE"
+                                            style="display:inline"
+                                            onsubmit="return confirm('¿Eliminar esta resolución?')">
+                                            <button type="submit" class="btn btn-sm btn-danger"
+                                              title="Eliminar">🗑</button>
+                                          </form>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                            <% }); %>
+                      </tbody>
+                    </table>
+                    <% } %>
+              </div>
             </div>
-          </div>
 
-    </main>
+      </main>
 
-    <%- include('partials/footer') %>
-    <%- include('partials/clock') %>
+      <%- include('partials/footer') %>
+        <%- include('partials/clock') %>
 
-    <script>
-      function subirPdfResolucion(id, input) {
-        if (!input.files || !input.files[0]) return;
-        const file = input.files[0];
-        if (file.type !== 'application/pdf') { alert('Solo se permiten archivos PDF.'); return; }
-        const formData = new FormData();
-        formData.append('pdf', file);
-        fetch('/resoluciones/subir-pdf/' + id, { method: 'POST', body: formData })
-          .then(r => r.json())
-          .then(data => {
-            if (data.ok) { location.reload(); }
-            else { alert(data.error || 'Error al subir el PDF.'); }
-          })
-          .catch(() => alert('Error al subir el PDF.'));
-      }
-
-      function toggleCheck(btn) {
-        const id = btn.dataset.id;
-        fetch('/resoluciones/' + id + '/toggle-check', { method: 'PATCH' })
-          .then(r => r.json())
-          .then(data => {
-            if (data.ok) {
-              // Reload to recalculate stats, vencimiento and row colors
-              location.reload();
+          <script>
+            function subirPdfResolucion(id, input) {
+              if (!input.files || !input.files[0]) return;
+              const file = input.files[0];
+              if (file.type !== 'application/pdf') { alert('Solo se permiten archivos PDF.'); return; }
+              const formData = new FormData();
+              formData.append('pdf', file);
+              fetch('/resoluciones/subir-pdf/' + id, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                  if (data.ok) { location.reload(); }
+                  else { alert(data.error || 'Error al subir el PDF.'); }
+                })
+                .catch(() => alert('Error al subir el PDF.'));
             }
-          })
-          .catch(() => {});
-      }
 
-      function copyNombre(el) {
-        const text = el.textContent.trim();
-        navigator.clipboard.writeText(text).then(function() {
-          el.setAttribute('data-tooltip', '¡Copiado!');
-          setTimeout(function() { el.setAttribute('data-tooltip', 'Copiar'); }, 1500);
-        });
-      }
+            function toggleCheck(btn) {
+              const id = btn.dataset.id;
+              fetch('/resoluciones/' + id + '/toggle-check', { method: 'PATCH' })
+                .then(r => r.json())
+                .then(data => {
+                  if (data.ok) {
+                    // Reload to recalculate stats, vencimiento and row colors
+                    location.reload();
+                  }
+                })
+                .catch(() => { });
+            }
 
-      function toggleActions(btn) {
-        const wrapper = btn.closest('.actions-wrapper');
-        const wasOpen = wrapper.classList.contains('open');
-        // Close all other open panels
-        document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
-        // Toggle current
-        if (!wasOpen) wrapper.classList.add('open');
-      }
+            function copyNombre(el) {
+              const text = el.textContent.trim();
+              navigator.clipboard.writeText(text).then(function () {
+                el.setAttribute('data-tooltip', '¡Copiado!');
+                setTimeout(function () { el.setAttribute('data-tooltip', 'Copiar'); }, 1500);
+              });
+            }
 
-      // Close actions panel on click outside
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('.actions-wrapper')) {
-          document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
-        }
-      });
+            function toggleActions(btn) {
+              const wrapper = btn.closest('.actions-wrapper');
+              const wasOpen = wrapper.classList.contains('open');
+              // Close all other open panels
+              document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+              // Toggle current
+              if (!wasOpen) wrapper.classList.add('open');
+            }
 
-      // Close actions panel on Escape key
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-          document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
-        }
-      });
-      // ── Sort table ──
-      let currentSortCol = null;
-      let currentSortDir = 'asc';
+            // Close actions panel on click outside
+            document.addEventListener('click', function (e) {
+              if (!e.target.closest('.actions-wrapper')) {
+                document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+              }
+            });
 
-      function sortTable(col, btn) {
-        // Toggle direction
-        if (currentSortCol === col) {
-          currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
-        } else {
-          currentSortCol = col;
-          currentSortDir = 'asc';
-        }
+            // Close actions panel on Escape key
+            document.addEventListener('keydown', function (e) {
+              if (e.key === 'Escape') {
+                document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+              }
+            });
+            // ── Sort table ──
+            let currentSortCol = null;
+            let currentSortDir = 'asc';
 
-        // Reset all sort buttons
-        document.querySelectorAll('.th-sort-btn').forEach(b => {
-          b.classList.remove('sort-active');
-          b.querySelector('.sort-arrow').textContent = '↕';
-        });
+            function sortTable(col, btn) {
+              // Toggle direction
+              if (currentSortCol === col) {
+                currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+              } else {
+                currentSortCol = col;
+                currentSortDir = 'asc';
+              }
 
-        // Mark active
-        btn.classList.add('sort-active');
-        btn.querySelector('.sort-arrow').textContent = currentSortDir === 'asc' ? '↑' : '↓';
+              // Reset all sort buttons
+              document.querySelectorAll('.th-sort-btn').forEach(b => {
+                b.classList.remove('sort-active');
+                b.querySelector('.sort-arrow').textContent = '↕';
+              });
 
-        const tbody = document.querySelector('table tbody');
-        if (!tbody) return;
-        const rows = Array.from(tbody.querySelectorAll('tr'));
+              // Mark active
+              btn.classList.add('sort-active');
+              btn.querySelector('.sort-arrow').textContent = currentSortDir === 'asc' ? '↑' : '↓';
 
-        // Column indices: nit=1, nombre=2, fecha=4 (0-indexed)
-        const colIndex = { nit: 1, nombre: 2, fecha: 4 };
-        const idx = colIndex[col];
+              const tbody = document.querySelector('table tbody');
+              if (!tbody) return;
+              const rows = Array.from(tbody.querySelectorAll('tr'));
 
-        rows.sort((a, b) => {
-          let va = a.cells[idx] ? a.cells[idx].textContent.trim() : '';
-          let vb = b.cells[idx] ? b.cells[idx].textContent.trim() : '';
+              // Column indices: nit=1, nombre=2, fecha=4 (0-indexed)
+              const colIndex = { nit: 1, nombre: 2, fecha: 4 };
+              const idx = colIndex[col];
 
-          if (col === 'nit') {
-            // Numeric sort
-            va = parseInt(va.replace(/\D/g, '')) || 0;
-            vb = parseInt(vb.replace(/\D/g, '')) || 0;
-            return currentSortDir === 'asc' ? va - vb : vb - va;
-          }
+              rows.sort((a, b) => {
+                let va = a.cells[idx] ? a.cells[idx].textContent.trim() : '';
+                let vb = b.cells[idx] ? b.cells[idx].textContent.trim() : '';
 
-          if (col === 'fecha') {
-            // Date format dd/mm/yyyy → comparable
-            const parseDate = s => {
-              const p = s.split('/');
-              return p.length === 3 ? new Date(p[2], p[1] - 1, p[0]) : new Date(0);
-            };
-            const da = parseDate(va);
-            const db = parseDate(vb);
-            return currentSortDir === 'asc' ? da - db : db - da;
-          }
+                if (col === 'nit') {
+                  // Numeric sort
+                  va = parseInt(va.replace(/\D/g, '')) || 0;
+                  vb = parseInt(vb.replace(/\D/g, '')) || 0;
+                  return currentSortDir === 'asc' ? va - vb : vb - va;
+                }
 
-          // Alphabetic sort (nombre)
-          return currentSortDir === 'asc'
-            ? va.localeCompare(vb, 'es', { sensitivity: 'base' })
-            : vb.localeCompare(va, 'es', { sensitivity: 'base' });
-        });
+                if (col === 'fecha') {
+                  // Date format dd/mm/yyyy → comparable
+                  const parseDate = s => {
+                    const p = s.split('/');
+                    return p.length === 3 ? new Date(p[2], p[1] - 1, p[0]) : new Date(0);
+                  };
+                  const da = parseDate(va);
+                  const db = parseDate(vb);
+                  return currentSortDir === 'asc' ? da - db : db - da;
+                }
 
-        // Re-number rows and reappend
-        rows.forEach((row, i) => {
-          row.cells[0].textContent = i + 1;
-          tbody.appendChild(row);
-        });
-      }
-    </script>
+                // Alphabetic sort (nombre)
+                return currentSortDir === 'asc'
+                  ? va.localeCompare(vb, 'es', { sensitivity: 'base' })
+                  : vb.localeCompare(va, 'es', { sensitivity: 'base' });
+              });
 
-</body>
+              // Re-number rows and reappend
+              rows.forEach((row, i) => {
+                row.cells[0].textContent = i + 1;
+                tbody.appendChild(row);
+              });
+            }
+          </script>
+
+  </body>
 
 </html>
