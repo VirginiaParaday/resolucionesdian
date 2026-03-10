@@ -706,8 +706,9 @@ router.get('/', async (req, res) => {
   const params = [];
 
   if (search) {
-    query += ' AND (nit ILIKE ? OR nombre_tercero ILIKE ? OR numero_resolucion ILIKE ? OR prefijo ILIKE ?)';
-    params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    const searchNoDots = search.replace(/\./g, '');
+    query += ` AND (nit ILIKE ? OR nombre_tercero ILIKE ? OR numero_resolucion ILIKE ? OR prefijo ILIKE ? OR REPLACE(nit, '.', '') ILIKE ?)`;
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${searchNoDots}%`);
   }
   if (modalidad) { query += ' AND modalidad = ?'; params.push(modalidad); }
   if (solicitud) { query += ' AND solicitud = ?'; params.push(solicitud); }
