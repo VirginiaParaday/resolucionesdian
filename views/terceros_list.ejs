@@ -3,167 +3,181 @@
 
 <%- include('partials/head', { pageTitle: 'Terceros' }) %>
 
-<body>
+    <body>
 
-    <%- include('partials/header', { navLinks: [
-        { href: '/terceros', label: 'Terceros', active: true },
-        { href: '/resoluciones/nueva', label: 'Nueva Resolución' },
-        { href: '/resoluciones', label: 'Listado' }
-    ] }) %>
+        <%- include('partials/header', { navLinks: [ { href: '/terceros' , label: 'Terceros' , active: true }, {
+            href: '/resoluciones/nueva' , label: 'Nueva Resolución' }, { href: '/resoluciones' , label: 'Listado' } ] })
+            %>
 
-        <main class="main">
+            <main class="main">
 
-            <% if (message) { %>
-                <div class="alert alert-<%= message.type %>">
-                    <span>
-                        <%= message.type==='success' ? '✓' : '✕' %>
-                    </span>
-                    <%= message.text %>
-                </div>
-                <% } %>
-
-                    <div class="page-header">
-                        <div class="page-title">Gestión de Terceros</div>
-                        <div class="page-subtitle">Registro y administración de terceros (personas naturales y
-                            jurídicas)
-                        </div>
+                <% if (message) { %>
+                    <div class="alert alert-<%= message.type %>">
+                        <span>
+                            <%= message.type==='success' ? '✓' : '✕' %>
+                        </span>
+                        <%= message.text %>
                     </div>
+                    <% } %>
 
-                    <form method="GET" action="/terceros" class="filters">
-                        <div class="filter-group">
-                            <label>Buscar</label>
-                            <input type="text" name="search" value="<%= search %>"
-                                placeholder="NIT, nombre, razón social..." style="min-width:300px">
+                        <div class="page-header">
+                            <div class="page-title">Gestión de Terceros</div>
+                            <div class="page-subtitle">Registro y administración de terceros (personas naturales y
+                                jurídicas)
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Filtrar</button>
-                        <% if (search) { %>
-                            <a href="/terceros" class="btn btn-ghost">Limpiar</a>
-                        <% } %>
-                        <div style="border-left: 1px solid rgba(29,28,28,0.2); height: 36px; margin: 0 12px;"></div>
-                        <div style="display:flex; align-items:center; gap:6px; white-space:nowrap;">
-                            <span style="font-size:24px; font-weight:700; color:var(--dian-blue);"><%= total %></span>
-                            <span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Terceros totales</span>
-                        </div>
-                        <a href="/terceros/nuevo" class="btn btn-goldes" style="margin-left:auto">＋ Nuevo
-                            Tercero</a>
-                    </form>
 
-                    <div class="table-card">
-                        <div class="table-header">
+                        <form method="GET" action="/terceros" class="filters">
+                            <div class="filter-group">
+                                <label>Buscar</label>
+                                <input type="text" name="search" value="<%= search %>"
+                                    placeholder="NIT, nombre, razón social..." style="min-width:300px">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Filtrar</button>
+                            <% if (search) { %>
+                                <a href="/terceros" class="btn btn-ghost">Limpiar</a>
+                                <% } %>
+                                    <div
+                                        style="border-left: 1px solid rgba(29,28,28,0.2); height: 36px; margin: 0 12px;">
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:6px; white-space:nowrap;">
+                                        <span style="font-size:24px; font-weight:700; color:var(--dian-blue);">
+                                            <%= total %>
+                                        </span>
+                                        <span
+                                            style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Terceros
+                                            totales</span>
+                                    </div>
+                                    <a href="/terceros/nuevo" class="btn btn-goldes" style="margin-left:auto">＋ Nuevo
+                                        Tercero</a>
+                        </form>
 
-                            <span class="table-title">Listado de Terceros</span>
+                        <div class="table-card">
+                            <div class="table-header">
 
-                            <div style="display:flex; align-items:center; gap:10px;w">
+                                <span class="table-title">Listado de Terceros</span>
 
-                            <a href="/terceros?search=<%= search %>&sort=nit"
-                            class="btn btn-sm-te sort-btn <%= sort === 'nit' ? 'active-sort' : '' %>">
-                            Ordenar por Nit
-                            </a>
+                                <div style="display:flex; align-items:center; gap:10px;w">
 
-                            <a href="/terceros?search=<%= search %>&sort=nombre"
-                            class="btn btn-sm-te sort-btn <%= sort === 'nombre' ? 'active-sort' : '' %>">
-                            Ordenar por Tercero
-                            </a>
+                                    <a href="/terceros?search=<%= search %>&sort=nit"
+                                        class="btn btn-sm-te sort-btn <%= sort === 'nit' ? 'active-sort' : '' %>">
+                                        Ordenar por Nit
+                                    </a>
 
-                                <span class="table-count">
-                                    <%= terceros.length %> registro<%= terceros.length !==1 ? 's' : '' %>
-                                </span>
+                                    <a href="/terceros?search=<%= search %>&sort=nombre"
+                                        class="btn btn-sm-te sort-btn <%= sort === 'nombre' ? 'active-sort' : '' %>">
+                                        Ordenar por Tercero
+                                    </a>
+
+                                    <span class="table-count">
+                                        <%= terceros.length %> registro<%= terceros.length !==1 ? 's' : '' %>
+                                    </span>
+
+                                </div>
 
                             </div>
-
-                        </div>
-                        <div class="table-wrap">
-                            <% if (terceros.length===0) { %>
-                                <div class="empty-state">
-                                    <div class="icon">👥</div>
-                                    <p>No se encontraron terceros</p>
-                                    <span>Registre un nuevo tercero o ajuste los filtros de búsqueda</span>
-                                </div>
-                                <% } else { %>
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>NIT</th>
-                                                <th>DV</th>
-                                                <th>Tipo</th>
-                                                <th>Nombre / Razón Social</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <% terceros.forEach((t, i)=> { %>
+                            <div class="table-wrap">
+                                <% if (terceros.length===0) { %>
+                                    <div class="empty-state">
+                                        <div class="icon">👥</div>
+                                        <p>No se encontraron terceros</p>
+                                        <span>Registre un nuevo tercero o ajuste los filtros de búsqueda</span>
+                                    </div>
+                                    <% } else { %>
+                                        <table>
+                                            <thead>
                                                 <tr>
-                                                    <td class="td-num" style="color:var(--muted)">
-                                                        <%= i + 1 %>
-                                                    </td>
-                                                    <td class="td-num">
-                                                        <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= Number(t.nit) ? Number(t.nit).toLocaleString('es-CO') : t.nit %></span>
-                                                    </td>
-                                                    <td class="td-num">
-                                                        <%= t.dv || '—' %>
-                                                    </td>
-                                                    <td>
-                                                        <span
-                                                            class="badge <%= t.tipo_persona === 'Natural' ? 'badge-hab' : 'badge-auth' %>">
-                                                            <%= t.tipo_persona %>
-                                                        </span>
-                                                    </td>
-                                                    <td class="td-main">
-                                                        <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)"><%= t.nombre_display %></span>
-                                                    </td>
-                                                    <td class="td-actions-cell">
-                                                        <div class="row-actions-wrapper">
-                                                            <div class="row-action-btns">
-                                                                <a href="/terceros/<%= t.id %>/editar"
-                                                                    class="btn btn-sm-te bted" title="Editar">Editar</a>
-                                                                <form method="POST"
-                                                                    action="/terceros/<%= t.id %>?_method=DELETE"
-                                                                    style="display:inline"
-                                                                    onsubmit="return confirm('¿Eliminar este tercero?')">
-                                                                    <button type="submit" class="btn btn-sm-te btde"
-                                                                        title="Eliminar">Eliminar</button>
-                                                                </form>
-                                                            </div>
-                                                            <button type="button" class="btn-row-toggle" title="Acciones" onclick="toggleRowActions(this)">+</button>
-                                                        </div>
-                                                    </td>
+                                                    <th>#</th>
+                                                    <th>NIT</th>
+                                                    <th>DV</th>
+                                                    <th>Tipo</th>
+                                                    <th>Nombre / Razón Social</th>
+                                                    <th></th>
                                                 </tr>
-                                                <% }); %>
-                                        </tbody>
-                                    </table>
-                                    <% } %>
+                                            </thead>
+                                            <tbody>
+                                                <% terceros.forEach((t, i)=> { %>
+                                                    <tr>
+                                                        <td class="td-num" style="color:var(--muted)">
+                                                            <%= i + 1 %>
+                                                        </td>
+                                                        <td class="td-num">
+                                                            <span class="copy-nombre" data-tooltip="Copiar"
+                                                                onclick="copyNombre(this)">
+                                                                <%= Number(t.nit) ?
+                                                                    Number(t.nit).toLocaleString('es-CO') : t.nit %>
+                                                            </span>
+                                                        </td>
+                                                        <td class="td-num">
+                                                            <%= t.dv || '—' %>
+                                                        </td>
+                                                        <td>
+                                                            <span
+                                                                class="badge <%= t.tipo_persona === 'Natural' ? 'badge-hab' : 'badge-auth' %>">
+                                                                <%= t.tipo_persona %>
+                                                            </span>
+                                                        </td>
+                                                        <td class="td-main">
+                                                            <span class="copy-nombre" data-tooltip="Copiar"
+                                                                onclick="copyNombre(this)">
+                                                                <%= t.nombre_display %>
+                                                            </span>
+                                                        </td>
+                                                        <td class="td-actions-cell">
+                                                            <div class="row-actions-wrapper">
+                                                                <div class="row-action-btns">
+                                                                    <a href="/terceros/<%= t.id %>/editar"
+                                                                        class="btn btn-sm-te bted"
+                                                                        title="Editar">Editar</a>
+                                                                    <form method="POST"
+                                                                        action="/terceros/<%= t.id %>?_method=DELETE"
+                                                                        style="display:inline"
+                                                                        onsubmit="return confirm('¿Eliminar este tercero?')">
+                                                                        <button type="submit" class="btn btn-sm-te btde"
+                                                                            title="Eliminar">Eliminar</button>
+                                                                    </form>
+                                                                </div>
+                                                                <button type="button" class="btn-row-toggle"
+                                                                    title="Acciones"
+                                                                    onclick="toggleRowActions(this)">+</button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <% }); %>
+                                            </tbody>
+                                        </table>
+                                        <% } %>
+                            </div>
                         </div>
-                    </div>
 
-        </main>
+            </main>
 
-        <%- include('partials/footer') %>
+            <%- include('partials/footer') %>
 
-        <%- include('partials/clock') %>
+                <%- include('partials/clock') %>
 
 
-<script>
-function toggleRowActions(btn) {
-  const wrapper = btn.closest('.row-actions-wrapper');
-  wrapper.classList.toggle('open');
-}
+                    <script>
+                        function toggleRowActions(btn) {
+                            const wrapper = btn.closest('.row-actions-wrapper');
+                            wrapper.classList.toggle('open');
+                        }
 
-document.querySelectorAll('tbody tr').forEach(function(row) {
-  row.addEventListener('mouseleave', function() {
-    const wrapper = row.querySelector('.row-actions-wrapper');
-    if (wrapper) wrapper.classList.remove('open');
-  });
-});
+                        document.querySelectorAll('tbody tr').forEach(function (row) {
+                            row.addEventListener('mouseleave', function () {
+                                const wrapper = row.querySelector('.row-actions-wrapper');
+                                if (wrapper) wrapper.classList.remove('open');
+                            });
+                        });
 
-function copyNombre(el) {
-  const text = el.textContent.trim();
-  navigator.clipboard.writeText(text).then(function() {
-    el.setAttribute('data-tooltip', '¡Copiado!');
-    setTimeout(function() { el.setAttribute('data-tooltip', 'Copiar'); }, 1500);
-  });
-}
-</script>
-</body>
+                        function copyNombre(el) {
+                            const text = el.textContent.trim();
+                            navigator.clipboard.writeText(text).then(function () {
+                                el.setAttribute('data-tooltip', '¡Copiado!');
+                                setTimeout(function () { el.setAttribute('data-tooltip', 'Copiar'); }, 1500);
+                            });
+                        }
+                    </script>
+    </body>
 
 </html>
