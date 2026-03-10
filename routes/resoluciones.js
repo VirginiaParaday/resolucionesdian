@@ -40,16 +40,54 @@ function mapearModalidad(valor) {
 // Helper: auto-check older resolutions with same NIT/Modalidad/Prefijo when a new Autorización is saved
 // Works bidirectionally: marks the resolution(s) with the smaller range as checked,
 // regardless of the order in which they are loaded.
+// Also handles Habilitación: auto-checks the parent Autorización whose range contains the Habilitación's range.
 async function marcarResolucionesAnteriores(resolucion) {
-  // Only applies to Autorización
-  if (!resolucion.solicitud || resolucion.solicitud !== 'Autorización') return;
-  if (!resolucion.nit || !resolucion.modalidad) return;
-
-  const hasta = parseInt((resolucion.hasta || '').toString().replace(/,/g, ''));
-  if (isNaN(hasta)) return;
+  if (!resolucion.solicitud || !resolucion.nit || !resolucion.modalidad) return;
 
   // Strip DV from NIT if present (e.g. "901563511-1" → "901563511")
   const nitClean = (resolucion.nit || '').split('-')[0];
+
+  // ── Habilitación: auto-check the parent Autorización and older Habilitaciones whose range contains this one ──
+  if (resolucion.solicitud === 'Habilitación') {
+    const habDesde = parseInt((resolucion.desde || '').toString().replace(/[.,]/g, ''));
+    const habHasta = parseInt((resolucion.hasta || '').toString().replace(/[.,]/g, ''));
+    if (isNaN(habDesde) || isNaN(habHasta)) return;
+
+    try {
+      // Find Autorización AND Habilitación resolutions with the same NIT, modalidad, prefijo
+      const relacionadas = await db.allAsync(
+        `SELECT id, desde, hasta, solicitud, vigencia, checked FROM resoluciones
+         WHERE SPLIT_PART(nit, '-', 1) = ? AND modalidad = ? AND COALESCE(prefijo,'') = COALESCE(?,'')
+           AND solicitud IN ('Autorización', 'Habilitación')
+           AND id != COALESCE(?, -1)`,
+        [nitClean, resolucion.modalidad, resolucion.prefijo || '', resolucion.id || null]
+      );
+
+      for (const rel of relacionadas) {
+        const relDesde = parseInt((rel.desde || '').toString().replace(/[.,]/g, ''));
+        const relHasta = parseInt((rel.hasta || '').toString().replace(/[.,]/g, ''));
+        if (isNaN(relDesde) || isNaN(relHasta)) continue;
+
+        // Check if the existing resolution's range contains the new Habilitación's range
+        if (relDesde <= habDesde && relHasta >= habHasta && !rel.checked) {
+          await db.runAsync(
+            `UPDATE resoluciones SET checked = 1, vigencia_original = vigencia, vigencia = '' WHERE id = ?`,
+            [rel.id]
+          );
+          console.log(`[AUTO-CHECK] ${rel.solicitud} #${rel.id} marcada como reemplazada por Habilitación (rango ${relDesde}-${relHasta} contiene ${habDesde}-${habHasta})`);
+        }
+      }
+    } catch (err) {
+      console.error('[AUTO-CHECK] Error al marcar resoluciones por Habilitación:', err.message);
+    }
+    return;
+  }
+
+  // ── Autorización: existing logic ──
+  if (resolucion.solicitud !== 'Autorización') return;
+
+  const hasta = parseInt((resolucion.hasta || '').toString().replace(/,/g, ''));
+  if (isNaN(hasta)) return;
 
   try {
     // Find all resolutions with the same NIT, modalidad, prefijo (excluding self)
@@ -582,7 +620,7 @@ router.post('/guardar-resolucion-pdf', async (req, res) => {
     // Auto-check older resolutions with same NIT/Modalidad/Prefijo
     await marcarResolucionesAnteriores({
       nit: nit || '', modalidad: modalidad || '', prefijo: prefijo || '',
-      solicitud: solicitud || '', hasta: hasta || '', id: null
+      solicitud: solicitud || '', desde: desde || '', hasta: hasta || '', id: null
     });
 
     res.json({ ok: true });
@@ -831,7 +869,7 @@ router.post('/', async (req, res) => {
     // Auto-check older resolutions with same NIT/Modalidad/Prefijo
     await marcarResolucionesAnteriores({
       id: insertResult.lastID, nit, modalidad, prefijo: prefijo || '',
-      solicitud, hasta
+      solicitud, desde, hasta
     });
 
     // Save PDF permanently only if checkbox was checked
