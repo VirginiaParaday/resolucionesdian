@@ -227,7 +227,9 @@
                                 </span>
                               </td>
                               <td class="td-num">
-                                <%= r.prefijo || '—' %>
+                                <span class="copy-nombre" data-tooltip="Copiar" onclick="copyNombre(this)">
+                                  <%= r.prefijo || '—' %>
+                                </span>
                               </td>
                               <td
                                 style="white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:12px; text-align: right;">
