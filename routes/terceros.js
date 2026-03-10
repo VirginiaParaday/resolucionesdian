@@ -112,8 +112,10 @@ router.get('/', async (req, res) => {
         FROM terceros WHERE 1=1`;
     const params = [];
     if (search) {
+        const searchNoDots = search.replace(/\./g, '');
         query += ` AND (
             nit ILIKE ? 
+            OR REPLACE(nit, '.', '') ILIKE ?
             OR primer_nombre ILIKE ? 
             OR segundo_nombre ILIKE ? 
             OR primer_apellido ILIKE ? 
@@ -121,7 +123,7 @@ router.get('/', async (req, res) => {
             OR razon_social ILIKE ?
             OR (COALESCE(primer_nombre,'') || ' ' || COALESCE(segundo_nombre,'') || ' ' || COALESCE(primer_apellido,'') || ' ' || COALESCE(segundo_apellido,'')) ILIKE ?
         )`;
-        params.push(...Array(7).fill(`%${search}%`));
+        params.push(`%${search}%`, `%${searchNoDots}%`, ...Array(6).fill(`%${search}%`));
     }
     if (sort === 'nit') {
         query += ' ORDER BY CAST(NULLIF(regexp_replace(nit, \'[^0-9]\', \'\', \'g\'), \'\') AS BIGINT) ASC NULLS LAST';
@@ -289,13 +291,13 @@ router.post('/importar', upload.single('archivo'), async (req, res) => {
         }
 
         // Clean up temp file
-        fs.unlink(req.file.path, () => {});
+        fs.unlink(req.file.path, () => { });
 
         let msg = `Importación completada: ${insertados} insertado(s), ${omitidos} omitido(s) por duplicado.`;
         if (errores.length > 0) msg += ` Errores: ${errores.slice(0, 5).join('; ')}`;
         req.session.message = { type: insertados > 0 ? 'success' : 'error', text: msg };
     } catch (e) {
-        fs.unlink(req.file.path, () => {});
+        fs.unlink(req.file.path, () => { });
         req.session.message = { type: 'error', text: 'Error al procesar el archivo: ' + e.message };
     }
     res.redirect('/terceros');
