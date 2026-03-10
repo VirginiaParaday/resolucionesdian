@@ -37,6 +37,58 @@ function mapearModalidad(valor) {
   if (/^papel$/i.test(v.trim())) return 'Factura de talonario o de papel';
   return valor;
 }
+// Helper: auto-check older resolutions with same NIT/Modalidad/Prefijo when a new Autorización is saved
+// Works bidirectionally: marks the resolution(s) with the smaller range as checked,
+// regardless of the order in which they are loaded.
+async function marcarResolucionesAnteriores(resolucion) {
+  // Only applies to Autorización
+  if (!resolucion.solicitud || resolucion.solicitud !== 'Autorización') return;
+  if (!resolucion.nit || !resolucion.modalidad) return;
+
+  const hasta = parseInt((resolucion.hasta || '').toString().replace(/,/g, ''));
+  if (isNaN(hasta)) return;
+
+  // Strip DV from NIT if present (e.g. "901563511-1" → "901563511")
+  const nitClean = (resolucion.nit || '').split('-')[0];
+
+  try {
+    // Find all resolutions with the same NIT, modalidad, prefijo (excluding self)
+    const relacionadas = await db.allAsync(
+      `SELECT id, hasta, vigencia, checked FROM resoluciones
+       WHERE SPLIT_PART(nit, '-', 1) = ? AND modalidad = ? AND COALESCE(prefijo,'') = COALESCE(?,'')
+         AND solicitud = 'Autorización'
+         AND id != COALESCE(?, -1)`,
+      [nitClean, resolucion.modalidad, resolucion.prefijo || '', resolucion.id || null]
+    );
+
+    for (const rel of relacionadas) {
+      const relHasta = parseInt((rel.hasta || '').toString().replace(/,/g, ''));
+      if (isNaN(relHasta)) continue;
+
+      if (relHasta < hasta && !rel.checked) {
+        // Existing resolution has smaller range → mark IT as checked
+        await db.runAsync(
+          `UPDATE resoluciones SET checked = 1, vigencia_original = vigencia, vigencia = '' WHERE id = ?`,
+          [rel.id]
+        );
+        console.log(`[AUTO-CHECK] Resolución #${rel.id} marcada como reemplazada (hasta=${relHasta} < ${hasta})`);
+      } else if (relHasta > hasta && resolucion.id) {
+        // Existing resolution has LARGER range → mark THE NEW ONE (self) as checked
+        const self = await db.getAsync('SELECT checked, vigencia FROM resoluciones WHERE id = ?', [resolucion.id]);
+        if (self && !self.checked) {
+          await db.runAsync(
+            `UPDATE resoluciones SET checked = 1, vigencia_original = vigencia, vigencia = '' WHERE id = ?`,
+            [resolucion.id]
+          );
+          console.log(`[AUTO-CHECK] Resolución #${resolucion.id} (nueva) marcada como reemplazada (hasta=${hasta} < ${relHasta})`);
+        }
+        break; // Self can only be checked once
+      }
+    }
+  } catch (err) {
+    console.error('[AUTO-CHECK] Error al marcar resoluciones anteriores:', err.message);
+  }
+}
 
 // Shared function: extract all form fields from PDF text
 function extraerDatosFormulario(texto) {
@@ -527,6 +579,12 @@ router.post('/guardar-resolucion-pdf', async (req, res) => {
       fs.unlink(tmpPath, () => { });
     }
 
+    // Auto-check older resolutions with same NIT/Modalidad/Prefijo
+    await marcarResolucionesAnteriores({
+      nit: nit || '', modalidad: modalidad || '', prefijo: prefijo || '',
+      solicitud: solicitud || '', hasta: hasta || '', id: null
+    });
+
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: 'Error al guardar: ' + e.message });
@@ -576,6 +634,13 @@ router.post('/guardar-pdf', async (req, res) => {
     const destPath = path.join(pdfsDir, destName);
     fs.copyFileSync(tmpPath, destPath);
     fs.unlink(tmpPath, () => { });
+
+    // Auto-check older resolutions when saving PDF for an existing Autorización
+    const resData = await db.getAsync('SELECT * FROM resoluciones WHERE numero_resolucion = ?', [numero_resolucion]);
+    if (resData) {
+      await marcarResolucionesAnteriores(resData);
+    }
+
     res.json({ ok: true, nombre: destName });
   } catch (e) {
     res.status(500).json({ error: 'Error al guardar el PDF: ' + e.message });
@@ -746,11 +811,17 @@ router.post('/', async (req, res) => {
       req.session.message = { type: 'error', text: `Ya existe una resolución con el número ${numero_resolucion}.` };
       return res.redirect('/resoluciones/nueva');
     }
-    await db.runAsync(
+    const insertResult = await db.runAsync(
       `INSERT INTO resoluciones (nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo, sucursal, desde, hasta, vigencia)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       [nit, nombre_tercero, fecha_resolucion, numero_resolucion, modalidad, solicitud, prefijo || '', sucursal || '', desde, hasta, vigencia]
     );
+
+    // Auto-check older resolutions with same NIT/Modalidad/Prefijo
+    await marcarResolucionesAnteriores({
+      id: insertResult.lastID, nit, modalidad, prefijo: prefijo || '',
+      solicitud, hasta
+    });
 
     // Save PDF permanently only if checkbox was checked
     if (pdf_temp && guardar_pdf === '1') {
@@ -838,8 +909,20 @@ router.patch('/:id/toggle-check', async (req, res) => {
 // Delete
 router.delete('/:id', async (req, res) => {
   try {
-    // Get resolution data to find the PDF file
-    const resolucion = await db.getAsync('SELECT fecha_resolucion, numero_resolucion FROM resoluciones WHERE id = ?', [req.params.id]);
+    // Get full resolution data before deleting
+    const resolucion = await db.getAsync('SELECT * FROM resoluciones WHERE id = ?', [req.params.id]);
+
+    // If this was an Autorización, restore previously auto-checked resolutions
+    if (resolucion && resolucion.solicitud === 'Autorización') {
+      const nitClean = (resolucion.nit || '').split('-')[0];
+      await db.runAsync(
+        `UPDATE resoluciones SET vigencia = vigencia_original, vigencia_original = NULL, checked = 0
+         WHERE SPLIT_PART(nit, '-', 1) = ? AND modalidad = ? AND COALESCE(prefijo,'') = COALESCE(?,'')
+           AND vigencia_original IS NOT NULL AND id != ?`,
+        [nitClean, resolucion.modalidad, resolucion.prefijo || '', resolucion.id]
+      );
+    }
+
     await db.runAsync('DELETE FROM resoluciones WHERE id = ?', [req.params.id]);
     // Delete associated PDF file
     if (resolucion) {

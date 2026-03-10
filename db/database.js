@@ -165,6 +165,11 @@ async function initDatabase(retries = 5) {
         await client.query('INSERT INTO usuarios (usuario, contrasena) VALUES ($1, $2)', ['IG', hash]);
       }
 
+      // Add vigencia_original column if it doesn't exist (for auto-check feature)
+      await client.query(`
+        ALTER TABLE resoluciones ADD COLUMN IF NOT EXISTS vigencia_original TEXT DEFAULT NULL
+      `);
+
       console.log('✅ Tablas PostgreSQL inicializadas correctamente');
       return; // Success — exit the retry loop
     } catch (err) {
