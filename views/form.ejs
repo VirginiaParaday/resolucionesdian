@@ -3,436 +3,450 @@
 
 <%- include('partials/head', { pageTitle: title }) %>
 
-<body>
+  <body>
 
-  <%- include('partials/header', { navLinks: [
-    { href: '/terceros', label: 'Terceros' },
-    { href: '/resoluciones/nueva', label: 'Nueva Resolución', active: true },
-    { href: '/resoluciones', label: 'Listado' }
-  ] }) %>
+    <%- include('partials/header', { navLinks: [ { href: '/terceros' , label: 'Terceros' }, {
+      href: '/resoluciones/nueva' , label: 'Nueva Resolución' , active: true }, { href: '/resoluciones' ,
+      label: 'Listado' } ] }) %>
 
-    <main class="main">
+      <main class="main">
 
-      <div class="page-header">
-        <div class="page-title">
-          <%= title %>
-        </div>
-        <div class="page-subtitle">
-          <%= resolucion ? `Editando resolución #${resolucion.id}` : 'Complete los datos de la nueva resolución DIAN' %>
-        </div>
-      </div>
-
-      <% if (typeof message !== 'undefined' && message) { %>
-        <div class="alert alert-<%= message.type %>">
-          <%= message.type === 'success' ? '✓' : '✕' %> <%= message.text %>
-        </div>
-      <% } %>
-
-      <div class="form-card">
-        <div class="form-section-header">
-          <div class="form-section-title">
-            <%= resolucion ? '✏️ Actualizar Resolución' : '➕ Registrar Nueva Resolución' %>
+        <div class="page-header">
+          <div class="page-title">
+            <%= title %>
           </div>
-          <div class="form-section-subtitle">Resoluciones de Facturación — Dirección de Impuestos y Aduanas Nacionales
+          <div class="page-subtitle">
+            <%= resolucion ? `Editando resolución #${resolucion.id}` : 'Complete los datos de la nueva resolución DIAN'
+              %>
           </div>
         </div>
 
-        <form method="POST" action="<%= action %>">
-          <input type="hidden" name="pdf_temp" id="pdfTempInput" value="">
-          <input type="hidden" name="guardar_pdf" id="guardarPdfFlag" value="0">
-
-          <div class="form-body">
-
-            <!-- DATOS DEL TERCERO -->
-            <div class="form-section">
-              <div class="form-section-label">📋 Datos del Tercero</div>
-              <div class="form-grid grid-2">
-                <div class="form-group" style="position:relative">
-                  <label>Buscar Tercero por NIT o Nombre</label>
-                  <input type="text" id="buscarTercero" value="<%= resolucion ? resolucion.nit : '' %>"
-                    placeholder="Escriba NIT o nombre para buscar..." autocomplete="off">
-                  <span class="hint">Busque un tercero registrado o escriba los datos manualmente</span>
-                  <div id="sugerenciasTercero"
-                    style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:0 0 6px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:50;max-height:200px;overflow-y:auto">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label>Nombre / Razón Social <span class="req">*</span></label>
-                  <input type="text" name="nombre_tercero" id="nombreTercero"
-                    value="<%= resolucion ? resolucion.nombre_tercero : '' %>"
-                    placeholder="Nombre completo o razón social" required readonly
-                    style="background:#f0f0f0;cursor:not-allowed">
-                </div>
-                <input type="hidden" name="nit" id="nitHidden" value="<%= resolucion ? resolucion.nit : '' %>">
-              </div>
-            </div>
-
-            <!-- DATOS DE LA RESOLUCIÓN -->
-            <div class="form-section">
-              <div class="form-section-label">📄 Datos de la Resolución</div>
-              <div class="form-grid grid-3">
-                <div class="form-group">
-                  <label>Número de Resolución <span class="req">*</span></label>
-                  <input type="text" name="numero_resolucion"
-                    value="<%= resolucion ? resolucion.numero_resolucion : '' %>" placeholder="Ej: 18764000001234"
-                    required>
-                </div>
-                <div class="form-group">
-                  <label>Fecha de la Resolución <span class="req">*</span></label>
-                  <input type="date" name="fecha_resolucion"
-                    value="<%= resolucion ? resolucion.fecha_resolucion : '' %>" required>
-                </div>
-                <div class="form-group">
-                  <label>Vigencia (meses) <span class="req">*</span></label>
-                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                    <input type="number" name="vigencia" id="vigenciaInput"
-                      value="<%= resolucion ? resolucion.vigencia : '' %>" placeholder="Ej: 12" min="1" max="600"
-                      required style="max-width:120px" oninput="calcularVencimiento()">
-                    <span style="font-size:13px;color:var(--muted)">meses</span>
-                    <span id="vigenciaLabel"
-                      style="font-size:12px;font-weight:600;color:var(--dian-blue);background:#E8F0FE;padding:4px 10px;border-radius:4px;display:none"></span>
-                  </div>
-                  <span class="hint">Número de meses de vigencia desde la fecha de la resolución</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- MODALIDAD Y SOLICITUD -->
-            <div class="form-section">
-              <div class="form-section-label">⚙️ Clasificación</div>
-              <div class="form-grid grid-2">
-                <div class="form-group">
-                  <label>Modalidad <span class="req">*</span></label>
-                  <select name="modalidad" required>
-                    <option value="">— Seleccione modalidad —</option>
-                    <% const modalidades=[ 'D.E. / P.O.S.' , 'Documento soporte' , 'Facturación computador'
-                      , 'Facturación de papel' , 'Factura de talonario o de papel' , 'Factura electrónica de venta' , 'Papel' ];
-                      %>
-                      <% modalidades.forEach(m=> { %>
-                        <option value="<%= m %>" <%=(resolucion && resolucion.modalidad===m) ? 'selected' : '' %>><%= m
-                            %>
-                        </option>
-                        <% }); %>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Solicitud <span class="req">*</span></label>
-                  <select name="solicitud" required>
-                    <option value="">— Seleccione tipo de solicitud —</option>
-                    <% ['Autorización', 'Habilitación' , 'Inhabilitación' ].forEach(s=> { %>
-                      <option value="<%= s %>" <%=(resolucion && resolucion.solicitud===s) ? 'selected' : '' %>><%= s %>
-                      </option>
-                      <% }); %>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <!-- FACTURACIÓN -->
-            <div class="form-section">
-              <div class="form-section-label">🔢 Rango de Numeración</div>
-              <div class="form-grid grid-4">
-                <div class="form-group">
-                  <label>Prefijo</label>
-                  <input type="text" name="prefijo" value="<%= resolucion ? resolucion.prefijo : '' %>"
-                    placeholder="Ej: FE, FV, SETT">
-                  <span class="hint">Opcional</span>
-                </div>
-                <div class="form-group">
-                  <label>Sucursal / Dirección</label>
-                  <div class="sucursal-wrapper">
-                    <select name="sucursal" id="sucursalSelect">
-                      <option value="">— Seleccione dirección —</option>
-                      <% if (resolucion && resolucion.sucursal) { %>
-                        <option value="<%= resolucion.sucursal %>" selected><%= resolucion.sucursal %></option>
-                      <% } %>
-                    </select>
-                    <button type="button" class="btn-add-dir" id="btnToggleDir" title="Gestionar direcciones">+</button>
-                  </div>
-                  <div id="panelDirecciones" class="sucursal-panel" style="display:none">
-                    <div class="dir-add-row">
-                      <input type="text" id="nuevaDireccion" placeholder="Escriba nueva dirección...">
-                      <button type="button" class="btn btn-primary btn-sm" id="btnAgregarDir">Agregar</button>
-                    </div>
-                    <div id="listaDirecciones" class="dir-list"></div>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label>Desde <span class="req">*</span></label>
-                  <input type="number" name="desde" value="<%= resolucion ? resolucion.desde : '' %>"
-                    placeholder="Ej: 1" min="0" required>
-                  <span class="hint">Número inicial del rango</span>
-                </div>
-                <div class="form-group">
-                  <label>Hasta <span class="req">*</span></label>
-                  <input type="number" name="hasta" value="<%= resolucion ? resolucion.hasta : '' %>"
-                    placeholder="Ej: 999999" min="0" required>
-                  <span class="hint">Número final del rango</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="btnRegistrar">
-              <%= resolucion ? 'Guardar Cambios' : 'Registrar Resolución' %>
-            </button>
-            <button type="button" class="btn btn-primary" id="btnGuardarPdf" style="display:none;background:#E67E22;border-color:#E67E22">
-              📄 Guardar PDF
-            </button>
-            <a href="/resoluciones" class="btn btn-ghost">Cancelar</a>
-            <% if (resolucion) { %>
-              <span style="margin-left:auto;font-size:12px;color:var(--muted)">
-                Creado: <%= resolucion.created_at %> &nbsp;|&nbsp; Actualizado: <%= resolucion.updated_at %>
-              </span>
-              <% } %>
-          </div>
-
-          <% if (!resolucion) { %>
-          <!-- PDF UPLOAD SECTION -->
-          <div class="pdf-upload-section" id="pdfUploadSection">
-            <div class="pdf-section-header">
-              <span class="pdf-section-icon">📄</span>
-              <div>
-                <div class="pdf-section-title">Cargar PDF — Formulario 1876 DIAN</div>
-                <div class="pdf-section-subtitle">Arrastre o seleccione el PDF de Autorización de Numeración para llenar el formulario automáticamente</div>
-              </div>
-            </div>
-
-            <div class="pdf-drop-zone" id="pdfDropZone">
-              <div class="pdf-drop-icon">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                  <rect x="8" y="4" width="32" height="40" rx="4" fill="#E8F0FE" stroke="#3167CA" stroke-width="2"/>
-                  <path d="M16 20h16M16 26h12M16 32h8" stroke="#3167CA" stroke-width="2" stroke-linecap="round"/>
-                  <circle cx="36" cy="36" r="10" fill="#3167CA"/>
-                  <path d="M36 31v10M31 36h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-              </div>
-              <div class="pdf-drop-text">Arrastre el PDF aquí</div>
-              <div class="pdf-drop-or">— o —</div>
-              <button type="button" class="btn btn-primary pdf-select-btn" id="btnSelectPdf">
-                📁 Seleccionar PDF
-              </button>
-              <div class="pdf-drop-hint">Formato: PDF del Formulario 1876 — Autorización Numeración de Facturación</div>
-              <input type="file" id="pdfFileInput" accept=".pdf" style="display:none">
-            </div>
-
-            <!-- Progress bar -->
-            <div class="pdf-progress" id="pdfProgress" style="display:none">
-              <div class="pdf-progress-bar">
-                <div class="pdf-progress-fill" id="pdfProgressFill"></div>
-              </div>
-              <div class="pdf-progress-text" id="pdfProgressText">Procesando PDF...</div>
-            </div>
-
-            <!-- Result area -->
-            <div id="pdfResult" style="display:none"></div>
-
-            <!-- Multi-upload button -->
-            <div style="text-align:center;margin-top:16px">
-              <button type="button" class="btn btn-ghost" id="btnMultiUpload" style="font-size:13px;color:#3167CA;border-color:#3167CA">
-                📑 Subir varias resoluciones
-              </button>
-            </div>
-
-            <!-- Multi-upload panel (hidden by default) -->
-            <div id="multiUploadPanel" style="display:none;margin-top:16px;border:2px dashed #cbd5e1;border-radius:12px;padding:20px;background:#FAFCFF">
-              <div style="text-align:center;margin-bottom:12px">
-                <div style="font-weight:600;color:#1e3a5f;font-size:14px">📑 Subir varias resoluciones</div>
-                <div style="font-size:12px;color:#888;margin-top:4px">Arrastre o seleccione varios PDF del Formulario 1876</div>
-              </div>
-              <div id="multiDropZone" style="border:2px dashed #d1d5db;border-radius:8px;padding:30px;text-align:center;cursor:pointer;transition:all 0.2s;background:white">
-                <div style="font-size:13px;color:#555">Arrastre los PDF aquí o haga clic para seleccionar</div>
-                <input type="file" id="multiFileInput" accept=".pdf" multiple style="display:none">
-              </div>
-              <div id="multiResultList" style="margin-top:12px;display:none"></div>
-            </div>
+        <% if (typeof message !=='undefined' && message) { %>
+          <div class="alert alert-<%= message.type %>">
+            <%= message.type==='success' ? '✓' : '✕' %>
+              <%= message.text %>
           </div>
           <% } %>
 
-        </form>
-      </div>
+            <div class="form-card">
+              <div class="form-section-header">
+                <div class="form-section-title">
+                  <%= resolucion ? '✏️ Actualizar Resolución' : '➕ Registrar Nueva Resolución' %>
+                </div>
+                <div class="form-section-subtitle">Resoluciones de Facturación — Dirección de Impuestos y Aduanas
+                  Nacionales
+                </div>
+              </div>
 
-    </main>
+              <form method="POST" action="<%= action %>">
+                <input type="hidden" name="pdf_temp" id="pdfTempInput" value="">
+                <input type="hidden" name="guardar_pdf" id="guardarPdfFlag" value="0">
 
-    <%- include('partials/footer') %>
-    <%- include('partials/clock') %>
-      <script>
-        function calcularVencimiento() {
-          const meses = parseInt(document.getElementById('vigenciaInput').value);
-          const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
-          const label = document.getElementById('vigenciaLabel');
+                <div class="form-body">
 
-          if (!meses || meses < 1) { label.style.display = 'none'; return; }
+                  <!-- DATOS DEL TERCERO -->
+                  <div class="form-section">
+                    <div class="form-section-label">📋 Datos del Tercero</div>
+                    <div class="form-grid grid-2">
+                      <div class="form-group" style="position:relative">
+                        <label>Buscar Tercero por NIT o Nombre</label>
+                        <input type="text" id="buscarTercero" value="<%= resolucion ? resolucion.nit : '' %>"
+                          placeholder="Escriba NIT o nombre para buscar..." autocomplete="off">
+                        <span class="hint">Busque un tercero registrado o escriba los datos manualmente</span>
+                        <div id="sugerenciasTercero"
+                          style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:0 0 6px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:50;max-height:200px;overflow-y:auto">
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label>Nombre / Razón Social <span class="req">*</span></label>
+                        <input type="text" name="nombre_tercero" id="nombreTercero"
+                          value="<%= resolucion ? resolucion.nombre_tercero : '' %>"
+                          placeholder="Nombre completo o razón social" required readonly
+                          style="background:#f0f0f0;cursor:not-allowed">
+                      </div>
+                      <input type="hidden" name="nit" id="nitHidden" value="<%= resolucion ? resolucion.nit : '' %>">
+                    </div>
+                  </div>
 
-          let base = fechaInput && fechaInput.value ? new Date(fechaInput.value + 'T00:00:00') : new Date();
-          base.setMonth(base.getMonth() + meses);
+                  <!-- DATOS DE LA RESOLUCIÓN -->
+                  <div class="form-section">
+                    <div class="form-section-label">📄 Datos de la Resolución</div>
+                    <div class="form-grid grid-3">
+                      <div class="form-group">
+                        <label>Número de Resolución <span class="req">*</span></label>
+                        <input type="text" name="numero_resolucion"
+                          value="<%= resolucion ? resolucion.numero_resolucion : '' %>" placeholder="Ej: 18764000001234"
+                          required>
+                      </div>
+                      <div class="form-group">
+                        <label>Fecha de la Resolución <span class="req">*</span></label>
+                        <input type="date" name="fecha_resolucion"
+                          value="<%= resolucion ? resolucion.fecha_resolucion : '' %>" required>
+                      </div>
+                      <div class="form-group">
+                        <label>Vigencia (meses) <span class="req">*</span></label>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                          <input type="number" name="vigencia" id="vigenciaInput"
+                            value="<%= resolucion ? resolucion.vigencia : '' %>" placeholder="Ej: 12" min="1" max="600"
+                            required style="max-width:120px" oninput="calcularVencimiento()">
+                          <span style="font-size:13px;color:var(--muted)">meses</span>
+                          <span id="vigenciaLabel"
+                            style="font-size:12px;font-weight:600;color:var(--dian-blue);background:#E8F0FE;padding:4px 10px;border-radius:4px;display:none"></span>
+                        </div>
+                        <span class="hint">Número de meses de vigencia desde la fecha de la resolución</span>
+                      </div>
+                    </div>
+                  </div>
 
-          const dia = String(base.getDate()).padStart(2, '0');
-          const mes = String(base.getMonth() + 1).padStart(2, '0');
-          const anio = base.getFullYear();
+                  <!-- MODALIDAD Y SOLICITUD -->
+                  <div class="form-section">
+                    <div class="form-section-label">⚙️ Clasificación</div>
+                    <div class="form-grid grid-2">
+                      <div class="form-group">
+                        <label>Modalidad <span class="req">*</span></label>
+                        <select name="modalidad" required>
+                          <option value="">— Seleccione modalidad —</option>
+                          <% const modalidades=[ 'D.E. / P.O.S.' , 'Documento soporte' , 'Facturación computador'
+                            , 'Facturación de papel' , 'Factura de talonario o de papel'
+                            , 'Factura electrónica de venta' , 'Papel' ]; %>
+                            <% modalidades.forEach(m=> { %>
+                              <option value="<%= m %>" <%=(resolucion && resolucion.modalidad===m) ? 'selected' : '' %>>
+                                <%= m %>
+                              </option>
+                              <% }); %>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label>Solicitud <span class="req">*</span></label>
+                        <select name="solicitud" required>
+                          <option value="">— Seleccione tipo de solicitud —</option>
+                          <% ['Autorización', 'Habilitación' , 'Inhabilitación' ].forEach(s=> { %>
+                            <option value="<%= s %>" <%=(resolucion && resolucion.solicitud===s) ? 'selected' : '' %>>
+                              <%= s %>
+                            </option>
+                            <% }); %>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
 
-          label.textContent = 'Vence: ' + dia + '/' + mes + '/' + anio;
-          label.style.display = 'inline';
-        }
+                  <!-- FACTURACIÓN -->
+                  <div class="form-section">
+                    <div class="form-section-label">🔢 Rango de Numeración</div>
+                    <div class="form-grid grid-4">
+                      <div class="form-group">
+                        <label>Prefijo</label>
+                        <input type="text" name="prefijo" value="<%= resolucion ? resolucion.prefijo : '' %>"
+                          placeholder="Ej: FE, FV, SETT">
+                        <span class="hint">Opcional</span>
+                      </div>
+                      <div class="form-group">
+                        <label>Sucursal / Dirección</label>
+                        <div class="sucursal-wrapper">
+                          <select name="sucursal" id="sucursalSelect">
+                            <option value="">— Seleccione dirección —</option>
+                            <% if (resolucion && resolucion.sucursal) { %>
+                              <option value="<%= resolucion.sucursal %>" selected>
+                                <%= resolucion.sucursal %>
+                              </option>
+                              <% } %>
+                          </select>
+                          <button type="button" class="btn-add-dir" id="btnToggleDir"
+                            title="Gestionar direcciones">+</button>
+                        </div>
+                        <div id="panelDirecciones" class="sucursal-panel" style="display:none">
+                          <div class="dir-add-row">
+                            <input type="text" id="nuevaDireccion" placeholder="Escriba nueva dirección...">
+                            <button type="button" class="btn btn-primary btn-sm" id="btnAgregarDir">Agregar</button>
+                          </div>
+                          <div id="listaDirecciones" class="dir-list"></div>
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label>Desde <span class="req">*</span></label>
+                        <input type="number" name="desde" value="<%= resolucion ? resolucion.desde : '' %>"
+                          placeholder="Ej: 1" min="0" required>
+                        <span class="hint">Número inicial del rango</span>
+                      </div>
+                      <div class="form-group">
+                        <label>Hasta <span class="req">*</span></label>
+                        <input type="number" name="hasta" value="<%= resolucion ? resolucion.hasta : '' %>"
+                          placeholder="Ej: 999999" min="0" required>
+                        <span class="hint">Número final del rango</span>
+                      </div>
+                    </div>
+                  </div>
 
-        // Autocomplete terceros
-        let debounceTimer;
-        const buscarInput = document.getElementById('buscarTercero');
-        const sugerenciasDiv = document.getElementById('sugerenciasTercero');
-        const nitHidden = document.getElementById('nitHidden');
-        const nombreTercero = document.getElementById('nombreTercero');
+                </div>
 
-        // Direcciones elements
-        const sucursalSelect = document.getElementById('sucursalSelect');
-        const btnToggleDir = document.getElementById('btnToggleDir');
-        const panelDir = document.getElementById('panelDirecciones');
-        const btnAgregarDir = document.getElementById('btnAgregarDir');
-        const nuevaDirInput = document.getElementById('nuevaDireccion');
-        const listaDirDiv = document.getElementById('listaDirecciones');
-        let currentNit = '<%= resolucion ? resolucion.nit : "" %>'.replace(/-\d+$/, '').split('-')[0];
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btnRegistrar">
+                    <%= resolucion ? 'Guardar Cambios' : 'Registrar Resolución' %>
+                  </button>
+                  <button type="button" class="btn btn-primary" id="btnGuardarPdf"
+                    style="display:none;background:#E67E22;border-color:#E67E22">
+                    📄 Guardar PDF
+                  </button>
+                  <a href="/resoluciones" class="btn btn-ghost">Cancelar</a>
+                  <% if (resolucion) { %>
+                    <span style="margin-left:auto;font-size:12px;color:var(--muted)">
+                      Creado: <%= resolucion.created_at %> &nbsp;|&nbsp; Actualizado: <%= resolucion.updated_at %>
+                    </span>
+                    <% } %>
+                </div>
 
-        // Toggle direcciones panel
-        if (btnToggleDir) {
-          btnToggleDir.addEventListener('click', () => {
-            const open = panelDir.style.display !== 'none';
-            panelDir.style.display = open ? 'none' : 'block';
-            btnToggleDir.textContent = open ? '+' : '−';
-          });
-        }
+                <% if (!resolucion) { %>
+                  <!-- PDF UPLOAD SECTION -->
+                  <div class="pdf-upload-section" id="pdfUploadSection">
+                    <div class="pdf-section-header">
+                      <span class="pdf-section-icon">📄</span>
+                      <div>
+                        <div class="pdf-section-title">Cargar PDF — Formulario 1876 DIAN</div>
+                        <div class="pdf-section-subtitle">Arrastre o seleccione el PDF de Autorización de Numeración
+                          para llenar el formulario automáticamente</div>
+                      </div>
+                    </div>
 
-        // Load addresses for a NIT
-        function cargarDirecciones(nit) {
-          if (!nit) return Promise.resolve([]);
-          const nitClean = nit.replace(/-\d+$/, '').split('-')[0];
-          return fetch('/terceros/api/direcciones/' + encodeURIComponent(nitClean))
-            .then(r => r.json())
-            .then(dirs => {
-              // Update select
-              const currentVal = sucursalSelect.value;
-              sucursalSelect.innerHTML = '<option value="">— Seleccione dirección —</option>';
-              dirs.forEach(d => {
-                const opt = document.createElement('option');
-                opt.value = d.direccion;
-                opt.textContent = d.direccion;
-                if (d.direccion === currentVal) opt.selected = true;
-                sucursalSelect.appendChild(opt);
+                    <div class="pdf-drop-zone" id="pdfDropZone">
+                      <div class="pdf-drop-icon">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                          <rect x="8" y="4" width="32" height="40" rx="4" fill="#E8F0FE" stroke="#3167CA"
+                            stroke-width="2" />
+                          <path d="M16 20h16M16 26h12M16 32h8" stroke="#3167CA" stroke-width="2"
+                            stroke-linecap="round" />
+                          <circle cx="36" cy="36" r="10" fill="#3167CA" />
+                          <path d="M36 31v10M31 36h10" stroke="white" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                      </div>
+                      <div class="pdf-drop-text">Arrastre el PDF aquí</div>
+                      <div class="pdf-drop-or">— o —</div>
+                      <button type="button" class="btn btn-primary pdf-select-btn" id="btnSelectPdf">
+                        📁 Seleccionar PDF
+                      </button>
+                      <div class="pdf-drop-hint">Formato: PDF del Formulario 1876 — Autorización Numeración de
+                        Facturación</div>
+                      <input type="file" id="pdfFileInput" accept=".pdf" style="display:none">
+                    </div>
+
+                    <!-- Progress bar -->
+                    <div class="pdf-progress" id="pdfProgress" style="display:none">
+                      <div class="pdf-progress-bar">
+                        <div class="pdf-progress-fill" id="pdfProgressFill"></div>
+                      </div>
+                      <div class="pdf-progress-text" id="pdfProgressText">Procesando PDF...</div>
+                    </div>
+
+                    <!-- Result area -->
+                    <div id="pdfResult" style="display:none"></div>
+
+                    <!-- Multi-upload button -->
+                    <div style="text-align:center;margin-top:16px">
+                      <button type="button" class="btn btn-ghost" id="btnMultiUpload"
+                        style="font-size:13px;color:#3167CA;border-color:#3167CA">
+                        📑 Subir varias resoluciones
+                      </button>
+                    </div>
+
+                    <!-- Multi-upload panel (hidden by default) -->
+                    <div id="multiUploadPanel"
+                      style="display:none;margin-top:16px;border:2px dashed #cbd5e1;border-radius:12px;padding:20px;background:#FAFCFF">
+                      <div style="text-align:center;margin-bottom:12px">
+                        <div style="font-weight:600;color:#1e3a5f;font-size:14px">📑 Subir varias resoluciones</div>
+                        <div style="font-size:12px;color:#888;margin-top:4px">Arrastre o seleccione varios PDF del
+                          Formulario 1876</div>
+                      </div>
+                      <div id="multiDropZone"
+                        style="border:2px dashed #d1d5db;border-radius:8px;padding:30px;text-align:center;cursor:pointer;transition:all 0.2s;background:white">
+                        <div style="font-size:13px;color:#555">Arrastre los PDF aquí o haga clic para seleccionar</div>
+                        <input type="file" id="multiFileInput" accept=".pdf" multiple style="display:none">
+                      </div>
+                      <div id="multiResultList" style="margin-top:12px;display:none"></div>
+                    </div>
+                  </div>
+                  <% } %>
+
+              </form>
+            </div>
+
+      </main>
+
+      <%- include('partials/footer') %>
+        <%- include('partials/clock') %>
+          <script>
+            function calcularVencimiento() {
+              const meses = parseInt(document.getElementById('vigenciaInput').value);
+              const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
+              const label = document.getElementById('vigenciaLabel');
+
+              if (!meses || meses < 1) { label.style.display = 'none'; return; }
+
+              let base = fechaInput && fechaInput.value ? new Date(fechaInput.value + 'T00:00:00') : new Date();
+              base.setMonth(base.getMonth() + meses);
+
+              const dia = String(base.getDate()).padStart(2, '0');
+              const mes = String(base.getMonth() + 1).padStart(2, '0');
+              const anio = base.getFullYear();
+
+              label.textContent = 'Vence: ' + dia + '/' + mes + '/' + anio;
+              label.style.display = 'inline';
+            }
+
+            // Autocomplete terceros
+            let debounceTimer;
+            const buscarInput = document.getElementById('buscarTercero');
+            const sugerenciasDiv = document.getElementById('sugerenciasTercero');
+            const nitHidden = document.getElementById('nitHidden');
+            const nombreTercero = document.getElementById('nombreTercero');
+
+            // Direcciones elements
+            const sucursalSelect = document.getElementById('sucursalSelect');
+            const btnToggleDir = document.getElementById('btnToggleDir');
+            const panelDir = document.getElementById('panelDirecciones');
+            const btnAgregarDir = document.getElementById('btnAgregarDir');
+            const nuevaDirInput = document.getElementById('nuevaDireccion');
+            const listaDirDiv = document.getElementById('listaDirecciones');
+            let currentNit = '<%= resolucion ? resolucion.nit : "" %>'.replace(/-\d+$/, '').split('-')[0];
+
+            // Toggle direcciones panel
+            if (btnToggleDir) {
+              btnToggleDir.addEventListener('click', () => {
+                const open = panelDir.style.display !== 'none';
+                panelDir.style.display = open ? 'none' : 'block';
+                btnToggleDir.textContent = open ? '+' : '−';
               });
-              // Update list in panel
-              if (dirs.length === 0) {
-                listaDirDiv.innerHTML = '<div style="padding:8px 0;color:var(--muted);font-size:12px">No hay direcciones registradas</div>';
-              } else {
-                listaDirDiv.innerHTML = dirs.map(d =>
-                  `<div class="dir-list-item" data-id="${d.id}">
+            }
+
+            // Load addresses for a NIT
+            function cargarDirecciones(nit) {
+              if (!nit) return Promise.resolve([]);
+              const nitClean = nit.replace(/-\d+$/, '').split('-')[0];
+              return fetch('/terceros/api/direcciones/' + encodeURIComponent(nitClean))
+                .then(r => r.json())
+                .then(dirs => {
+                  // Update select
+                  const currentVal = sucursalSelect.value;
+                  sucursalSelect.innerHTML = '<option value="">— Seleccione dirección —</option>';
+                  dirs.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.direccion;
+                    opt.textContent = d.direccion;
+                    if (d.direccion === currentVal) opt.selected = true;
+                    sucursalSelect.appendChild(opt);
+                  });
+                  // Update list in panel
+                  if (dirs.length === 0) {
+                    listaDirDiv.innerHTML = '<div style="padding:8px 0;color:var(--muted);font-size:12px">No hay direcciones registradas</div>';
+                  } else {
+                    listaDirDiv.innerHTML = dirs.map(d =>
+                      `<div class="dir-list-item" data-id="${d.id}">
                     <span class="dir-text">${d.direccion}</span>
                     <div class="dir-actions">
                       <button type="button" class="btn-edit-dir" data-id="${d.id}" data-dir="${d.direccion}" title="Editar">✏️</button>
                       <button type="button" class="btn-del-dir" data-id="${d.id}" title="Eliminar">✕</button>
                     </div>
                   </div>`
-                ).join('');
-                // Bind edit buttons
-                listaDirDiv.querySelectorAll('.btn-edit-dir').forEach(btn => {
-                  btn.addEventListener('click', function () {
-                    iniciarEdicion(this.dataset.id, this.dataset.dir);
-                  });
-                });
-                // Bind delete buttons
-                listaDirDiv.querySelectorAll('.btn-del-dir').forEach(btn => {
-                  btn.addEventListener('click', function () {
-                    eliminarDireccion(this.dataset.id);
-                  });
-                });
-              }
-              return dirs;
-            })
-            .catch(() => []);
-        }
+                    ).join('');
+                    // Bind edit buttons
+                    listaDirDiv.querySelectorAll('.btn-edit-dir').forEach(btn => {
+                      btn.addEventListener('click', function () {
+                        iniciarEdicion(this.dataset.id, this.dataset.dir);
+                      });
+                    });
+                    // Bind delete buttons
+                    listaDirDiv.querySelectorAll('.btn-del-dir').forEach(btn => {
+                      btn.addEventListener('click', function () {
+                        eliminarDireccion(this.dataset.id);
+                      });
+                    });
+                  }
+                  return dirs;
+                })
+                .catch(() => []);
+            }
 
-        // Inline edit: transform row into input
-        function iniciarEdicion(id, currentDir) {
-          const item = listaDirDiv.querySelector(`.dir-list-item[data-id="${id}"]`);
-          if (!item) return;
-          item.innerHTML = `
+            // Inline edit: transform row into input
+            function iniciarEdicion(id, currentDir) {
+              const item = listaDirDiv.querySelector(`.dir-list-item[data-id="${id}"]`);
+              if (!item) return;
+              item.innerHTML = `
             <input type="text" class="dir-edit-input" value="${currentDir}" style="flex:1;padding:5px 8px;border:1px solid var(--dian-blue);border-radius:4px;font-size:13px;font-family:inherit">
             <div class="dir-actions">
               <button type="button" class="btn-save-dir" data-id="${id}" title="Guardar">✓</button>
               <button type="button" class="btn-cancel-dir" title="Cancelar">✗</button>
             </div>
           `;
-          const input = item.querySelector('.dir-edit-input');
-          input.focus();
-          input.select();
-          item.querySelector('.btn-save-dir').addEventListener('click', () => {
-            const newDir = input.value.trim();
-            if (newDir) editarDireccion(id, newDir);
-          });
-          item.querySelector('.btn-cancel-dir').addEventListener('click', () => {
-            cargarDirecciones(currentNit);
-          });
-          input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); const newDir = input.value.trim(); if (newDir) editarDireccion(id, newDir); }
-            if (e.key === 'Escape') cargarDirecciones(currentNit);
-          });
-        }
-
-        // Edit address via API
-        function editarDireccion(id, direccion) {
-          fetch('/terceros/api/direcciones/' + id, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ direccion })
-          })
-            .then(r => r.json())
-            .then(() => cargarDirecciones(currentNit))
-            .catch(() => {});
-        }
-
-        // Add new address
-        if (btnAgregarDir) {
-          btnAgregarDir.addEventListener('click', () => {
-            const dir = nuevaDirInput.value.trim();
-            if (!dir) return;
-            if (!currentNit) { alert('Seleccione un tercero primero'); return; }
-            fetch('/terceros/api/direcciones', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nit: currentNit, direccion: dir })
-            })
-              .then(r => r.json())
-              .then(() => {
-                nuevaDirInput.value = '';
+              const input = item.querySelector('.dir-edit-input');
+              input.focus();
+              input.select();
+              item.querySelector('.btn-save-dir').addEventListener('click', () => {
+                const newDir = input.value.trim();
+                if (newDir) editarDireccion(id, newDir);
+              });
+              item.querySelector('.btn-cancel-dir').addEventListener('click', () => {
                 cargarDirecciones(currentNit);
+              });
+              input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); const newDir = input.value.trim(); if (newDir) editarDireccion(id, newDir); }
+                if (e.key === 'Escape') cargarDirecciones(currentNit);
+              });
+            }
+
+            // Edit address via API
+            function editarDireccion(id, direccion) {
+              fetch('/terceros/api/direcciones/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direccion })
               })
-              .catch(() => {});
-          });
-        }
-
-        // Delete address
-        function eliminarDireccion(id) {
-          fetch('/terceros/api/direcciones/' + id, { method: 'DELETE' })
-            .then(r => r.json())
-            .then(() => cargarDirecciones(currentNit))
-            .catch(() => {});
-        }
-
-        if (buscarInput) {
-          function buscarTerceroDebounced() {
-            clearTimeout(debounceTimer);
-            const q = buscarInput.value.trim();
-            if (q.length < 2) { sugerenciasDiv.style.display = 'none'; return; }
-            debounceTimer = setTimeout(() => {
-              fetch('/terceros/api/buscar?q=' + encodeURIComponent(q))
                 .then(r => r.json())
-                .then(data => {
-                  if (data.length === 0) {
-                    sugerenciasDiv.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:13px">No se encontraron terceros</div>';
-                    sugerenciasDiv.style.display = 'block';
-                    return;
-                  }
-                  sugerenciasDiv.innerHTML = data.map(t =>
-                    `<div class="sug-item" data-nit="${t.nit}" data-dv="${t.dv || ''}" data-nombre="${t.nombre}"
+                .then(() => cargarDirecciones(currentNit))
+                .catch(() => { });
+            }
+
+            // Add new address
+            if (btnAgregarDir) {
+              btnAgregarDir.addEventListener('click', () => {
+                const dir = nuevaDirInput.value.trim();
+                if (!dir) return;
+                if (!currentNit) { alert('Seleccione un tercero primero'); return; }
+                fetch('/terceros/api/direcciones', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ nit: currentNit, direccion: dir })
+                })
+                  .then(r => r.json())
+                  .then(() => {
+                    nuevaDirInput.value = '';
+                    cargarDirecciones(currentNit);
+                  })
+                  .catch(() => { });
+              });
+            }
+
+            // Delete address
+            function eliminarDireccion(id) {
+              fetch('/terceros/api/direcciones/' + id, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(() => cargarDirecciones(currentNit))
+                .catch(() => { });
+            }
+
+            if (buscarInput) {
+              function buscarTerceroDebounced() {
+                clearTimeout(debounceTimer);
+                const q = buscarInput.value.trim();
+                if (q.length < 2) { sugerenciasDiv.style.display = 'none'; return; }
+                debounceTimer = setTimeout(() => {
+                  fetch('/terceros/api/buscar?q=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(data => {
+                      if (data.length === 0) {
+                        sugerenciasDiv.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:13px">No se encontraron terceros</div>';
+                        sugerenciasDiv.style.display = 'block';
+                        return;
+                      }
+                      sugerenciasDiv.innerHTML = data.map(t =>
+                        `<div class="sug-item" data-nit="${t.nit}" data-dv="${t.dv || ''}" data-nombre="${t.nombre}"
                   style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;transition:background 0.1s"
                   onmouseover="this.style.background='#F0F4FF'"
                   onmouseout="this.style.background='white'">
@@ -440,587 +454,589 @@
                   <span style="color:var(--muted);margin-left:8px">${t.nombre}</span>
                   <span style="float:right;font-size:11px;color:var(--dian-blue)">${t.tipo_persona}</span>
                 </div>`
-                  ).join('');
-                  sugerenciasDiv.style.display = 'block';
+                      ).join('');
+                      sugerenciasDiv.style.display = 'block';
 
-                  sugerenciasDiv.querySelectorAll('.sug-item').forEach(item => {
-                    item.addEventListener('click', function () {
-                      const nit = this.dataset.nit;
-                      const dv = this.dataset.dv;
-                      const nombre = this.dataset.nombre;
-                      buscarInput.value = nit + (dv ? '-' + dv : '');
-                      nitHidden.value = nit + (dv ? '-' + dv : '');
-                      nombreTercero.value = nombre;
-                      sugerenciasDiv.style.display = 'none';
-                      // Load addresses for selected tercero
-                      currentNit = nit;
-                      cargarDirecciones(nit);
-                    });
-                  });
-                })
-                .catch(() => { sugerenciasDiv.style.display = 'none'; });
-            }, 300);
-          }
-
-          buscarInput.addEventListener('input', buscarTerceroDebounced);
-          buscarInput.addEventListener('paste', function () {
-            // Wait a tick for the pasted value to be set
-            setTimeout(buscarTerceroDebounced, 50);
-          });
-
-          // Close suggestions when clicking outside
-          document.addEventListener('click', function (e) {
-            if (!buscarInput.contains(e.target) && !sugerenciasDiv.contains(e.target)) {
-              sugerenciasDiv.style.display = 'none';
-            }
-          });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-          const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
-          if (fechaInput) fechaInput.addEventListener('change', calcularVencimiento);
-          calcularVencimiento();
-          // Load addresses if editing an existing resolution
-          if (currentNit) cargarDirecciones(currentNit);
-
-          // ===== PDF UPLOAD LOGIC =====
-          const dropZone = document.getElementById('pdfDropZone');
-          const fileInput = document.getElementById('pdfFileInput');
-          const btnSelect = document.getElementById('btnSelectPdf');
-          const progressDiv = document.getElementById('pdfProgress');
-          const progressFill = document.getElementById('pdfProgressFill');
-          const progressText = document.getElementById('pdfProgressText');
-          const resultDiv = document.getElementById('pdfResult');
-
-          if (!dropZone) return; // Not on new form (editing mode)
-
-          // Click to select
-          btnSelect.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            fileInput.click();
-          });
-
-          dropZone.addEventListener('click', (e) => {
-            if (e.target === btnSelect || btnSelect.contains(e.target)) return;
-            fileInput.click();
-          });
-
-          fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) procesarPdf(fileInput.files[0]);
-          });
-
-          // Drag and drop
-          ['dragenter', 'dragover'].forEach(evt => {
-            dropZone.addEventListener(evt, (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              dropZone.classList.add('pdf-drag-over');
-            });
-          });
-
-          ['dragleave', 'drop'].forEach(evt => {
-            dropZone.addEventListener(evt, (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              dropZone.classList.remove('pdf-drag-over');
-            });
-          });
-
-          dropZone.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-              if (files[0].type !== 'application/pdf') {
-                mostrarResultado('error', '❌ El archivo debe ser un PDF.');
-                return;
+                      sugerenciasDiv.querySelectorAll('.sug-item').forEach(item => {
+                        item.addEventListener('click', function () {
+                          const nit = this.dataset.nit;
+                          const dv = this.dataset.dv;
+                          const nombre = this.dataset.nombre;
+                          buscarInput.value = nit + (dv ? '-' + dv : '');
+                          nitHidden.value = nit + (dv ? '-' + dv : '');
+                          nombreTercero.value = nombre;
+                          sugerenciasDiv.style.display = 'none';
+                          // Load addresses for selected tercero
+                          currentNit = nit;
+                          cargarDirecciones(nit);
+                        });
+                      });
+                    })
+                    .catch(() => { sugerenciasDiv.style.display = 'none'; });
+                }, 300);
               }
-              procesarPdf(files[0]);
-            }
-          });
 
-          function mostrarProgreso(show, text) {
-            progressDiv.style.display = show ? 'block' : 'none';
-            if (text) progressText.textContent = text;
-            if (show) {
-              progressFill.style.width = '0%';
-              setTimeout(() => { progressFill.style.width = '60%'; }, 100);
-            }
-          }
+              buscarInput.addEventListener('input', buscarTerceroDebounced);
+              buscarInput.addEventListener('paste', function () {
+                // Wait a tick for the pasted value to be set
+                setTimeout(buscarTerceroDebounced, 50);
+              });
 
-          function mostrarResultado(tipo, html) {
-            resultDiv.style.display = 'block';
-            resultDiv.className = tipo === 'success' ? 'pdf-result pdf-result-success' : 'pdf-result pdf-result-error';
-            resultDiv.innerHTML = html;
-          }
-
-          function procesarPdf(file) {
-            mostrarProgreso(true, `Procesando "${file.name}"...`);
-            resultDiv.style.display = 'none';
-
-            const formData = new FormData();
-            formData.append('pdf', file);
-
-            fetch('/resoluciones/parsear-pdf', {
-              method: 'POST',
-              body: formData
-            })
-              .then(r => r.json())
-              .then(data => {
-                progressFill.style.width = '100%';
-                setTimeout(() => { mostrarProgreso(false); }, 400);
-
-                if (data.error) {
-                  mostrarResultado('error', `❌ ${data.error}`);
-                  return;
+              // Close suggestions when clicking outside
+              document.addEventListener('click', function (e) {
+                if (!buscarInput.contains(e.target) && !sugerenciasDiv.contains(e.target)) {
+                  sugerenciasDiv.style.display = 'none';
                 }
+              });
+            }
 
-                // Fill form fields
-                let campos = [];
+            document.addEventListener('DOMContentLoaded', () => {
+              const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
+              if (fechaInput) fechaInput.addEventListener('change', calcularVencimiento);
+              calcularVencimiento();
+              // Load addresses if editing an existing resolution
+              if (currentNit) cargarDirecciones(currentNit);
 
-                // NIT & Tercero
-                if (data.tercero_encontrado && data.tercero) {
-                  const t = data.tercero;
-                  buscarInput.value = t.nit + (t.dv ? '-' + t.dv : '');
-                  nitHidden.value = t.nit + (t.dv ? '-' + t.dv : '');
-                  nombreTercero.value = t.nombre;
-                  currentNit = t.nit;
-                  campos.push(`<strong>NIT:</strong> ${t.nit}${t.dv ? '-' + t.dv : ''} — ${t.nombre} ✅`);
+              // ===== PDF UPLOAD LOGIC =====
+              const dropZone = document.getElementById('pdfDropZone');
+              const fileInput = document.getElementById('pdfFileInput');
+              const btnSelect = document.getElementById('btnSelectPdf');
+              const progressDiv = document.getElementById('pdfProgress');
+              const progressFill = document.getElementById('pdfProgressFill');
+              const progressText = document.getElementById('pdfProgressText');
+              const resultDiv = document.getElementById('pdfResult');
 
-                  // Load addresses then select the one matching PDF field 29 (Establecimiento)
-                  cargarDirecciones(t.nit).then((dirs) => {
-                    // Normalize helper: collapse whitespace, lowercase, unify dash variants
-                    function normAddr(s) {
-                      return (s || '').trim().toLowerCase()
-                        .replace(/[\s\u00a0]+/g, ' ')
-                        .replace(/[–—]/g, '-');
+              if (!dropZone) return; // Not on new form (editing mode)
+
+              // Click to select
+              btnSelect.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fileInput.click();
+              });
+
+              dropZone.addEventListener('click', (e) => {
+                if (e.target === btnSelect || btnSelect.contains(e.target)) return;
+                fileInput.click();
+              });
+
+              fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) procesarPdf(fileInput.files[0]);
+              });
+
+              // Drag and drop
+              ['dragenter', 'dragover'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dropZone.classList.add('pdf-drag-over');
+                });
+              });
+
+              ['dragleave', 'drop'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dropZone.classList.remove('pdf-drag-over');
+                });
+              });
+
+              dropZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                  if (files[0].type !== 'application/pdf') {
+                    mostrarResultado('error', '❌ El archivo debe ser un PDF.');
+                    return;
+                  }
+                  procesarPdf(files[0]);
+                }
+              });
+
+              function mostrarProgreso(show, text) {
+                progressDiv.style.display = show ? 'block' : 'none';
+                if (text) progressText.textContent = text;
+                if (show) {
+                  progressFill.style.width = '0%';
+                  setTimeout(() => { progressFill.style.width = '60%'; }, 100);
+                }
+              }
+
+              function mostrarResultado(tipo, html) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = tipo === 'success' ? 'pdf-result pdf-result-success' : 'pdf-result pdf-result-error';
+                resultDiv.innerHTML = html;
+              }
+
+              function procesarPdf(file) {
+                mostrarProgreso(true, `Procesando "${file.name}"...`);
+                resultDiv.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('pdf', file);
+
+                fetch('/resoluciones/parsear-pdf', {
+                  method: 'POST',
+                  body: formData
+                })
+                  .then(r => r.json())
+                  .then(data => {
+                    progressFill.style.width = '100%';
+                    setTimeout(() => { mostrarProgreso(false); }, 400);
+
+                    if (data.error) {
+                      mostrarResultado('error', `❌ ${data.error}`);
+                      return;
                     }
 
-                    console.log('[PDF] establecimiento:', JSON.stringify(data.establecimiento));
-                    console.log('[PDF] texto_extraido:', data.texto_extraido);
-                    console.log('[PDF] direcciones cargadas:', dirs ? dirs.map(d => JSON.stringify(d.direccion)) : '(none)');
+                    // Fill form fields
+                    let campos = [];
 
-                    const est = normAddr(data.establecimiento);
-                    const opts = sucursalSelect.options;
-                    let found = false;
-                    let bestIdx = -1;
+                    // NIT & Tercero
+                    if (data.tercero_encontrado && data.tercero) {
+                      const t = data.tercero;
+                      buscarInput.value = t.nit + (t.dv ? '-' + t.dv : '');
+                      nitHidden.value = t.nit + (t.dv ? '-' + t.dv : '');
+                      nombreTercero.value = t.nombre;
+                      currentNit = t.nit;
+                      campos.push(`<strong>NIT:</strong> ${t.nit}${t.dv ? '-' + t.dv : ''} — ${t.nombre} ✅`);
 
-                    if (est) {
-                      // Pass 1: exact normalized match
-                      for (let i = 0; i < opts.length; i++) {
-                        if (normAddr(opts[i].value) === est) {
-                          bestIdx = i; found = true; break;
+                      // Load addresses then select the one matching PDF field 29 (Establecimiento)
+                      cargarDirecciones(t.nit).then((dirs) => {
+                        // Normalize helper: collapse whitespace, lowercase, unify dash variants
+                        function normAddr(s) {
+                          return (s || '').trim().toLowerCase()
+                            .replace(/[\s\u00a0]+/g, ' ')
+                            .replace(/[–—]/g, '-');
                         }
+
+                        console.log('[PDF] establecimiento:', JSON.stringify(data.establecimiento));
+                        console.log('[PDF] texto_extraido:', data.texto_extraido);
+                        console.log('[PDF] direcciones cargadas:', dirs ? dirs.map(d => JSON.stringify(d.direccion)) : '(none)');
+
+                        const est = normAddr(data.establecimiento);
+                        const opts = sucursalSelect.options;
+                        let found = false;
+                        let bestIdx = -1;
+
+                        if (est) {
+                          // Pass 1: exact normalized match
+                          for (let i = 0; i < opts.length; i++) {
+                            if (normAddr(opts[i].value) === est) {
+                              bestIdx = i; found = true; break;
+                            }
+                          }
+                          // Pass 2: contains match (handles "COMPANY ADDR" vs just "ADDR")
+                          if (!found) {
+                            for (let i = 0; i < opts.length; i++) {
+                              const optVal = normAddr(opts[i].value);
+                              if (optVal && (optVal.includes(est) || est.includes(optVal))) {
+                                bestIdx = i; found = true; break;
+                              }
+                            }
+                          }
+                          if (found) {
+                            sucursalSelect.selectedIndex = bestIdx;
+                            console.log('[PDF] dirección seleccionada:', opts[bestIdx].value);
+                          } else {
+                            // Not found in options — open the address panel and pre-fill for manual confirmation
+                            if (btnToggleDir) btnToggleDir.textContent = '−';
+                            if (panelDir) panelDir.style.display = 'block';
+                            if (nuevaDirInput) {
+                              nuevaDirInput.value = data.establecimiento.trim();
+                              nuevaDirInput.focus();
+                            }
+                            // Show warning message below sucursalSelect
+                            let pdfDirWarn = document.getElementById('pdfDirWarning');
+                            if (!pdfDirWarn) {
+                              pdfDirWarn = document.createElement('div');
+                              pdfDirWarn.id = 'pdfDirWarning';
+                              pdfDirWarn.style.cssText = 'margin-top:6px;padding:7px 10px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;color:#856404;font-size:13px;';
+                              sucursalSelect.parentNode.insertBefore(pdfDirWarn, sucursalSelect.nextSibling);
+                            }
+                            pdfDirWarn.innerHTML = `⚠️ La dirección del PDF <strong>"${data.establecimiento.trim()}"</strong> no está registrada para este tercero. Agréguela usando el panel de abajo.`;
+                            console.log('[PDF] dirección no encontrada, panel abierto con:', data.establecimiento);
+                          }
+                        } else if (opts.length === 2) {
+                          // No establecimiento extracted but only one address exists — auto-select it
+                          sucursalSelect.selectedIndex = 1;
+                          console.log('[PDF] una sola dirección disponible, seleccionada automáticamente:', opts[1].value);
+                        }
+                      });
+                      if (data.establecimiento) {
+                        campos.push(`<strong>Establecimiento:</strong> ${data.establecimiento}${data.direccion_registrada ? ' <em>(registrada automáticamente)</em>' : ''}`);
                       }
-                      // Pass 2: contains match (handles "COMPANY ADDR" vs just "ADDR")
-                      if (!found) {
-                        for (let i = 0; i < opts.length; i++) {
-                          const optVal = normAddr(opts[i].value);
-                          if (optVal && (optVal.includes(est) || est.includes(optVal))) {
-                            bestIdx = i; found = true; break;
+                    } else if (data.nit) {
+                      buscarInput.value = data.nit;
+                      campos.push(`<strong>NIT:</strong> ${data.nit} ⚠️ <em>No encontrado en terceros</em>`);
+                    }
+
+                    // Modalidad
+                    if (data.modalidad) {
+                      const selMod = document.querySelector('select[name="modalidad"]');
+                      if (selMod) {
+                        for (let i = 0; i < selMod.options.length; i++) {
+                          if (selMod.options[i].value === data.modalidad) {
+                            selMod.selectedIndex = i;
+                            break;
                           }
                         }
                       }
-                      if (found) {
-                        sucursalSelect.selectedIndex = bestIdx;
-                        console.log('[PDF] dirección seleccionada:', opts[bestIdx].value);
-                      } else {
-                        // Not found in options — open the address panel and pre-fill for manual confirmation
-                        if (btnToggleDir) btnToggleDir.textContent = '−';
-                        if (panelDir) panelDir.style.display = 'block';
-                        if (nuevaDirInput) {
-                          nuevaDirInput.value = data.establecimiento.trim();
-                          nuevaDirInput.focus();
-                        }
-                        // Show warning message below sucursalSelect
-                        let pdfDirWarn = document.getElementById('pdfDirWarning');
-                        if (!pdfDirWarn) {
-                          pdfDirWarn = document.createElement('div');
-                          pdfDirWarn.id = 'pdfDirWarning';
-                          pdfDirWarn.style.cssText = 'margin-top:6px;padding:7px 10px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;color:#856404;font-size:13px;';
-                          sucursalSelect.parentNode.insertBefore(pdfDirWarn, sucursalSelect.nextSibling);
-                        }
-                        pdfDirWarn.innerHTML = `⚠️ La dirección del PDF <strong>"${data.establecimiento.trim()}"</strong> no está registrada para este tercero. Agréguela usando el panel de abajo.`;
-                        console.log('[PDF] dirección no encontrada, panel abierto con:', data.establecimiento);
-                      }
-                    } else if (opts.length === 2) {
-                      // No establecimiento extracted but only one address exists — auto-select it
-                      sucursalSelect.selectedIndex = 1;
-                      console.log('[PDF] una sola dirección disponible, seleccionada automáticamente:', opts[1].value);
+                      campos.push(`<strong>Modalidad:</strong> ${data.modalidad}`);
                     }
-                  });
-                  if (data.establecimiento) {
-                    campos.push(`<strong>Establecimiento:</strong> ${data.establecimiento}${data.direccion_registrada ? ' <em>(registrada automáticamente)</em>' : ''}`);
-                  }
-                } else if (data.nit) {
-                  buscarInput.value = data.nit;
-                  campos.push(`<strong>NIT:</strong> ${data.nit} ⚠️ <em>No encontrado en terceros</em>`);
-                }
 
-                // Modalidad
-                if (data.modalidad) {
-                  const selMod = document.querySelector('select[name="modalidad"]');
-                  if (selMod) {
-                    for (let i = 0; i < selMod.options.length; i++) {
-                      if (selMod.options[i].value === data.modalidad) {
-                        selMod.selectedIndex = i;
-                        break;
-                      }
-                    }
-                  }
-                  campos.push(`<strong>Modalidad:</strong> ${data.modalidad}`);
-                }
-
-                // Solicitud
-                if (data.solicitud) {
-                  const selSol = document.querySelector('select[name="solicitud"]');
-                  if (selSol) {
-                    for (let i = 0; i < selSol.options.length; i++) {
-                      if (selSol.options[i].value === data.solicitud) {
-                        selSol.selectedIndex = i;
-                        break;
-                      }
-                    }
-                  }
-                  campos.push(`<strong>Solicitud:</strong> ${data.solicitud}`);
-                }
-
-                // Prefijo
-                if (data.prefijo) {
-                  document.querySelector('input[name="prefijo"]').value = data.prefijo;
-                  campos.push(`<strong>Prefijo:</strong> ${data.prefijo}`);
-                }
-
-                // Número de resolución (formulario)
-                if (data.numero_formulario) {
-                  document.querySelector('input[name="numero_resolucion"]').value = data.numero_formulario;
-                  campos.push(`<strong>Nº Resolución:</strong> ${data.numero_formulario}`);
-                }
-
-                // Desde
-                if (data.desde) {
-                  document.querySelector('input[name="desde"]').value = data.desde;
-                  campos.push(`<strong>Desde:</strong> ${data.desde}`);
-                }
-
-                // Hasta
-                if (data.hasta) {
-                  document.querySelector('input[name="hasta"]').value = data.hasta;
-                  campos.push(`<strong>Hasta:</strong> ${data.hasta}`);
-                }
-
-                // Vigencia
-                if (data.vigencia) {
-                  document.getElementById('vigenciaInput').value = data.vigencia;
-                  campos.push(`<strong>Vigencia:</strong> ${data.vigencia} meses`);
-                }
-
-                // Fecha resolución
-                if (data.fecha_resolucion) {
-                  document.querySelector('input[name="fecha_resolucion"]').value = data.fecha_resolucion;
-                  campos.push(`<strong>Fecha:</strong> ${data.fecha_resolucion}`);
-                }
-
-                // ============ SCENARIO HANDLING ============
-                const btnRegistrar = document.getElementById('btnRegistrar');
-                const btnGuardarPdf = document.getElementById('btnGuardarPdf');
-
-                if (data.resolucion_existe && data.pdf_existe) {
-                  // SCENARIO 1: Resolution exists AND PDF file exists
-                  campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#27AE60" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#27AE60;font-size:12px;font-weight:600">${data.pdf_nombre}.pdf</span></div>`);
-                  document.querySelectorAll('form input:not([type=hidden]), form select').forEach(el => {
-                    el.setAttribute('readonly', true);
-                    el.setAttribute('disabled', true);
-                    el.style.opacity = '0.7';
-                  });
-                  btnRegistrar.disabled = true;
-                  btnRegistrar.style.opacity = '0.5';
-                  btnRegistrar.style.cursor = 'not-allowed';
-
-                } else if (data.resolucion_existe && !data.pdf_existe) {
-                  // SCENARIO 2: Resolution exists BUT no PDF — allow saving PDF only
-                  // Make all form inputs readonly
-                  document.querySelectorAll('form input:not([type=hidden]), form select').forEach(el => {
-                    el.setAttribute('readonly', true);
-                    el.setAttribute('disabled', true);
-                    el.style.opacity = '0.7';
-                  });
-                  btnRegistrar.disabled = true;
-                  btnRegistrar.style.opacity = '0.5';
-                  btnRegistrar.style.cursor = 'not-allowed';
-                  // Show Guardar PDF button
-                  btnGuardarPdf.style.display = 'inline-flex';
-                  btnGuardarPdf.onclick = function () {
-                    btnGuardarPdf.disabled = true;
-                    btnGuardarPdf.textContent = '⏳ Guardando...';
-                    fetch('/resoluciones/guardar-pdf', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        pdf_temp: data.pdf_temp,
-                        fecha_resolucion: data.resolucion_datos.fecha_resolucion,
-                        numero_resolucion: data.resolucion_datos.numero_resolucion
-                      })
-                    })
-                      .then(r => r.json())
-                      .then(resp => {
-                        if (resp.ok) {
-                          btnGuardarPdf.textContent = '✅ PDF Guardado';
-                          btnGuardarPdf.style.background = '#27AE60';
-                          btnGuardarPdf.style.borderColor = '#27AE60';
-                        } else {
-                          btnGuardarPdf.textContent = '❌ Error';
-                          btnGuardarPdf.disabled = false;
-                          alert(resp.error);
+                    // Solicitud
+                    if (data.solicitud) {
+                      const selSol = document.querySelector('select[name="solicitud"]');
+                      if (selSol) {
+                        for (let i = 0; i < selSol.options.length; i++) {
+                          if (selSol.options[i].value === data.solicitud) {
+                            selSol.selectedIndex = i;
+                            break;
+                          }
                         }
-                      })
-                      .catch(() => {
-                        btnGuardarPdf.textContent = '❌ Error';
-                        btnGuardarPdf.disabled = false;
+                      }
+                      campos.push(`<strong>Solicitud:</strong> ${data.solicitud}`);
+                    }
+
+                    // Prefijo
+                    if (data.prefijo) {
+                      document.querySelector('input[name="prefijo"]').value = data.prefijo;
+                      campos.push(`<strong>Prefijo:</strong> ${data.prefijo}`);
+                    }
+
+                    // Número de resolución (formulario)
+                    if (data.numero_formulario) {
+                      document.querySelector('input[name="numero_resolucion"]').value = data.numero_formulario;
+                      campos.push(`<strong>Nº Resolución:</strong> ${data.numero_formulario}`);
+                    }
+
+                    // Desde
+                    if (data.desde) {
+                      document.querySelector('input[name="desde"]').value = data.desde;
+                      const desdeFmt = Number(data.desde).toLocaleString('es-CO');
+                      campos.push(`<strong>Desde:</strong> ${desdeFmt}`);
+                    }
+
+                    // Hasta
+                    if (data.hasta) {
+                      document.querySelector('input[name="hasta"]').value = data.hasta;
+                      const hastaFmt = Number(data.hasta).toLocaleString('es-CO');
+                      campos.push(`<strong>Hasta:</strong> ${hastaFmt}`);
+                    }
+
+                    // Vigencia
+                    if (data.vigencia) {
+                      document.getElementById('vigenciaInput').value = data.vigencia;
+                      campos.push(`<strong>Vigencia:</strong> ${data.vigencia} meses`);
+                    }
+
+                    // Fecha resolución
+                    if (data.fecha_resolucion) {
+                      document.querySelector('input[name="fecha_resolucion"]').value = data.fecha_resolucion;
+                      campos.push(`<strong>Fecha:</strong> ${data.fecha_resolucion}`);
+                    }
+
+                    // ============ SCENARIO HANDLING ============
+                    const btnRegistrar = document.getElementById('btnRegistrar');
+                    const btnGuardarPdf = document.getElementById('btnGuardarPdf');
+
+                    if (data.resolucion_existe && data.pdf_existe) {
+                      // SCENARIO 1: Resolution exists AND PDF file exists
+                      campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#27AE60" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#27AE60;font-size:12px;font-weight:600">${data.pdf_nombre}.pdf</span></div>`);
+                      document.querySelectorAll('form input:not([type=hidden]), form select').forEach(el => {
+                        el.setAttribute('readonly', true);
+                        el.setAttribute('disabled', true);
+                        el.style.opacity = '0.7';
                       });
-                  };
-                  campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#E67E22;font-size:12px">PDF adjunto pendiente de guardar.</span></div>`);
+                      btnRegistrar.disabled = true;
+                      btnRegistrar.style.opacity = '0.5';
+                      btnRegistrar.style.cursor = 'not-allowed';
 
-                } else {
-                  // SCENARIO 3: Resolution does NOT exist — normal flow
-                  if (data.pdf_temp) {
-                    document.getElementById('pdfTempInput').value = data.pdf_temp;
-                    document.getElementById('guardarPdfFlag').value = '1';
-                    campos.push(`<div style="display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#E67E22;font-size:12px">PDF adjunto pendiente de almacenar</span><label style="display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:8px"><input type="checkbox" id="chkGuardarPdf" checked onchange="document.getElementById('guardarPdfFlag').value=this.checked?'1':'0'" style="accent-color:#E67E22;width:15px;height:15px;cursor:pointer"><span style="font-size:12px;color:#555">Almacenar PDF</span></label></div>`);
-                  }
-                }
+                    } else if (data.resolucion_existe && !data.pdf_existe) {
+                      // SCENARIO 2: Resolution exists BUT no PDF — allow saving PDF only
+                      // Make all form inputs readonly
+                      document.querySelectorAll('form input:not([type=hidden]), form select').forEach(el => {
+                        el.setAttribute('readonly', true);
+                        el.setAttribute('disabled', true);
+                        el.style.opacity = '0.7';
+                      });
+                      btnRegistrar.disabled = true;
+                      btnRegistrar.style.opacity = '0.5';
+                      btnRegistrar.style.cursor = 'not-allowed';
+                      // Show Guardar PDF button
+                      btnGuardarPdf.style.display = 'inline-flex';
+                      btnGuardarPdf.onclick = function () {
+                        btnGuardarPdf.disabled = true;
+                        btnGuardarPdf.textContent = '⏳ Guardando...';
+                        fetch('/resoluciones/guardar-pdf', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            pdf_temp: data.pdf_temp,
+                            fecha_resolucion: data.resolucion_datos.fecha_resolucion,
+                            numero_resolucion: data.resolucion_datos.numero_resolucion
+                          })
+                        })
+                          .then(r => r.json())
+                          .then(resp => {
+                            if (resp.ok) {
+                              btnGuardarPdf.textContent = '✅ PDF Guardado';
+                              btnGuardarPdf.style.background = '#27AE60';
+                              btnGuardarPdf.style.borderColor = '#27AE60';
+                            } else {
+                              btnGuardarPdf.textContent = '❌ Error';
+                              btnGuardarPdf.disabled = false;
+                              alert(resp.error);
+                            }
+                          })
+                          .catch(() => {
+                            btnGuardarPdf.textContent = '❌ Error';
+                            btnGuardarPdf.disabled = false;
+                          });
+                      };
+                      campos.push(`<div style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#E67E22;font-size:12px">PDF adjunto pendiente de guardar.</span></div>`);
 
-                // Warning banner for existing resolutions
-                let avisoExiste = '';
-                if (data.resolucion_existe && data.pdf_existe) {
-                  avisoExiste = `<div style="margin-top:10px;padding:10px 14px;background:#FFF3CD;border:1px solid #FFECB5;border-radius:8px;color:#856404;font-size:13px">⚠️ <strong>Ya existe una resolución registrada con el número ${data.numero_formulario}.</strong> No se podrá registrar de nuevo.</div>`;
-                } else if (data.resolucion_existe && !data.pdf_existe) {
-                  avisoExiste = `<div style="margin-top:10px;padding:10px 14px;background:#FFF3CD;border:1px solid #FFECB5;border-radius:8px;color:#856404;font-size:13px">⚠️ <strong>Ya existe la resolución ${data.numero_formulario} sin archivo PDF.</strong></div>`;
-                }
+                    } else {
+                      // SCENARIO 3: Resolution does NOT exist — normal flow
+                      if (data.pdf_temp) {
+                        document.getElementById('pdfTempInput').value = data.pdf_temp;
+                        document.getElementById('guardarPdfFlag').value = '1';
+                        campos.push(`<div style="display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#E67E22;font-size:12px">PDF adjunto pendiente de almacenar</span><label style="display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:8px"><input type="checkbox" id="chkGuardarPdf" checked onchange="document.getElementById('guardarPdfFlag').value=this.checked?'1':'0'" style="accent-color:#E67E22;width:15px;height:15px;cursor:pointer"><span style="font-size:12px;color:#555">Almacenar PDF</span></label></div>`);
+                      }
+                    }
 
-                // Recalculate expiration
-                calcularVencimiento();
+                    // Warning banner for existing resolutions
+                    let avisoExiste = '';
+                    if (data.resolucion_existe && data.pdf_existe) {
+                      avisoExiste = `<div style="margin-top:10px;padding:10px 14px;background:#FFF3CD;border:1px solid #FFECB5;border-radius:8px;color:#856404;font-size:13px">⚠️ <strong>Ya existe una resolución registrada con el número ${data.numero_formulario}.</strong> No se podrá registrar de nuevo.</div>`;
+                    } else if (data.resolucion_existe && !data.pdf_existe) {
+                      avisoExiste = `<div style="margin-top:10px;padding:10px 14px;background:#FFF3CD;border:1px solid #FFECB5;border-radius:8px;color:#856404;font-size:13px">⚠️ <strong>Ya existe la resolución ${data.numero_formulario} sin archivo PDF.</strong></div>`;
+                    }
 
-                if (campos.length > 0) {
-                  mostrarResultado('success',
-                    `<div class="pdf-result-title">✅ PDF procesado exitosamente — ${campos.length} campo(s) extraído(s)</div>
+                    // Recalculate expiration
+                    calcularVencimiento();
+
+                    if (campos.length > 0) {
+                      mostrarResultado('success',
+                        `<div class="pdf-result-title">✅ PDF procesado exitosamente — ${campos.length} campo(s) extraído(s)</div>
                      <div class="pdf-result-fields">${campos.map(c => `<div class="pdf-field-item">${c}</div>`).join('')}</div>
                      ${avisoExiste}
                      <div class="pdf-result-hint">Verifique los datos antes de registrar la resolución</div>`
-                  );
-                } else {
-                  mostrarResultado('error',
-                    `<div class="pdf-result-title">⚠️ No se pudieron extraer campos del PDF</div>
+                      );
+                    } else {
+                      mostrarResultado('error',
+                        `<div class="pdf-result-title">⚠️ No se pudieron extraer campos del PDF</div>
                      <div class="pdf-result-hint">Asegúrese de que el archivo sea un Formulario 1876 válido de la DIAN</div>`
-                  );
+                      );
+                    }
+                  })
+                  .catch(err => {
+                    mostrarProgreso(false);
+                    mostrarResultado('error', `❌ Error al procesar: ${err.message}`);
+                  });
+              }
+
+              // ===== MULTI-PDF UPLOAD LOGIC =====
+              const btnMulti = document.getElementById('btnMultiUpload');
+              const multiPanel = document.getElementById('multiUploadPanel');
+              const multiDrop = document.getElementById('multiDropZone');
+              const multiInput = document.getElementById('multiFileInput');
+              const multiResult = document.getElementById('multiResultList');
+
+              if (btnMulti) {
+                btnMulti.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  multiPanel.style.display = multiPanel.style.display === 'none' ? 'block' : 'none';
+                });
+
+                multiDrop.addEventListener('click', () => multiInput.click());
+
+                ['dragenter', 'dragover'].forEach(evt => {
+                  multiDrop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); multiDrop.style.borderColor = '#3167CA'; multiDrop.style.background = '#EBF0FF'; });
+                });
+                ['dragleave', 'drop'].forEach(evt => {
+                  multiDrop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); multiDrop.style.borderColor = '#d1d5db'; multiDrop.style.background = 'white'; });
+                });
+
+                multiDrop.addEventListener('drop', (e) => {
+                  const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+                  if (files.length > 0) procesarMulti(files);
+                });
+
+                multiInput.addEventListener('change', () => {
+                  const files = Array.from(multiInput.files).filter(f => f.type === 'application/pdf');
+                  if (files.length > 0) procesarMulti(files);
+                  multiInput.value = '';
+                });
+
+
+                function procesarMulti(files) {
+                  multiResult.style.display = 'block';
+                  multiResult.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:13px">⏳ Validando ' + files.length + ' PDF(s)...</div>';
+                  const fd = new FormData();
+                  files.forEach(f => fd.append('pdfs', f));
+
+                  fetch('/resoluciones/validar-pdfs', { method: 'POST', body: fd })
+                    .then(r => r.json())
+                    .then(data => {
+                      if (!data.ok) { multiResult.innerHTML = '<div style="color:red;font-size:13px">❌ ' + (data.error || 'Error') + '</div>'; return; }
+                      multiResultData = data.resultados;
+                      let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">';
+                      html += '<thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Archivo</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Nº Resolución</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Estado</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Acción</th></tr></thead><tbody>';
+                      let pendingCount = 0;
+                      data.resultados.forEach((r, idx) => {
+                        let estado = '', accion = '';
+                        if (r.resolucion_existe && r.pdf_existe) {
+                          estado = '<span style="color:#27AE60">✅ Registrada + PDF</span>';
+                          accion = '<span style="color:#aaa">—</span>';
+                        } else if (r.resolucion_existe && !r.pdf_existe) {
+                          estado = '<span style="color:#E67E22">⚠️ Sin archivo PDF</span>';
+                          accion = '<button type="button" class="btn btn-sm multi-save-btn" data-type="pdf" data-idx="' + idx + '" id="multiSave_' + idx + '" style="background:#E67E22;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiPdf(\'' + r.temp + '\', \'' + r.numero_formulario + '\', this)">💾 Guardar PDF</button>';
+                          pendingCount++;
+                        } else {
+                          estado = '<span style="color:#3167CA">📄 Nueva resolución</span>';
+                          accion = '<button type="button" class="btn btn-sm multi-save-btn" data-type="new" data-idx="' + idx + '" id="multiSaveNew_' + idx + '" style="background:#3167CA;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiResolucion(' + idx + ', this)">💾 Guardar</button>';
+                          pendingCount++;
+                        }
+                        html += '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 8px">' + r.archivo + '</td><td style="padding:6px 8px;font-family:monospace">' + r.numero_formulario + '</td><td style="padding:6px 8px;text-align:center">' + estado + '</td><td style="padding:6px 8px;text-align:center">' + accion + '</td></tr>';
+                      });
+                      html += '</tbody></table>';
+                      // Add "Guardar todos" button if there are pending items
+                      if (pendingCount > 1) {
+                        html += '<div style="text-align:right;margin-top:12px"><button type="button" id="btnGuardarTodos" style="background:linear-gradient(135deg,#3167CA,#1e4fa0);color:white;border:none;padding:8px 24px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(49,103,202,0.3);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 4px 12px rgba(49,103,202,0.4)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 2px 8px rgba(49,103,202,0.3)\'" onclick="guardarTodos(this)">💾 Guardar todos (' + pendingCount + ')</button></div>';
+                      }
+                      multiResult.innerHTML = html;
+                    })
+                    .catch(() => { multiResult.innerHTML = '<div style="color:red;font-size:13px">❌ Error de conexión</div>'; });
                 }
+              }
+            });
+
+            // Global function for multi-save buttons (existing resolution, missing PDF only)
+            function guardarMultiPdf(tempFile, numResolucion, btn) {
+              btn.disabled = true;
+              btn.textContent = '⏳...';
+              fetch('/resoluciones/subir-pdf-temp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pdf_temp: tempFile, numero_resolucion: numResolucion })
               })
-              .catch(err => {
-                mostrarProgreso(false);
-                mostrarResultado('error', `❌ Error al procesar: ${err.message}`);
-              });
-          }
-
-          // ===== MULTI-PDF UPLOAD LOGIC =====
-          const btnMulti = document.getElementById('btnMultiUpload');
-          const multiPanel = document.getElementById('multiUploadPanel');
-          const multiDrop = document.getElementById('multiDropZone');
-          const multiInput = document.getElementById('multiFileInput');
-          const multiResult = document.getElementById('multiResultList');
-
-          if (btnMulti) {
-            btnMulti.addEventListener('click', (e) => {
-              e.preventDefault();
-              multiPanel.style.display = multiPanel.style.display === 'none' ? 'block' : 'none';
-            });
-
-            multiDrop.addEventListener('click', () => multiInput.click());
-
-            ['dragenter', 'dragover'].forEach(evt => {
-              multiDrop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); multiDrop.style.borderColor = '#3167CA'; multiDrop.style.background = '#EBF0FF'; });
-            });
-            ['dragleave', 'drop'].forEach(evt => {
-              multiDrop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); multiDrop.style.borderColor = '#d1d5db'; multiDrop.style.background = 'white'; });
-            });
-
-            multiDrop.addEventListener('drop', (e) => {
-              const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
-              if (files.length > 0) procesarMulti(files);
-            });
-
-            multiInput.addEventListener('change', () => {
-              const files = Array.from(multiInput.files).filter(f => f.type === 'application/pdf');
-              if (files.length > 0) procesarMulti(files);
-              multiInput.value = '';
-            });
-
-
-            function procesarMulti(files) {
-              multiResult.style.display = 'block';
-              multiResult.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:13px">⏳ Validando ' + files.length + ' PDF(s)...</div>';
-              const fd = new FormData();
-              files.forEach(f => fd.append('pdfs', f));
-
-              fetch('/resoluciones/validar-pdfs', { method: 'POST', body: fd })
                 .then(r => r.json())
                 .then(data => {
-                  if (!data.ok) { multiResult.innerHTML = '<div style="color:red;font-size:13px">❌ ' + (data.error || 'Error') + '</div>'; return; }
-                  multiResultData = data.resultados;
-                  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">';
-                  html += '<thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Archivo</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Nº Resolución</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Estado</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Acción</th></tr></thead><tbody>';
-                  let pendingCount = 0;
-                  data.resultados.forEach((r, idx) => {
-                    let estado = '', accion = '';
-                    if (r.resolucion_existe && r.pdf_existe) {
-                      estado = '<span style="color:#27AE60">✅ Registrada + PDF</span>';
-                      accion = '<span style="color:#aaa">—</span>';
-                    } else if (r.resolucion_existe && !r.pdf_existe) {
-                      estado = '<span style="color:#E67E22">⚠️ Sin archivo PDF</span>';
-                      accion = '<button type="button" class="btn btn-sm multi-save-btn" data-type="pdf" data-idx="' + idx + '" id="multiSave_' + idx + '" style="background:#E67E22;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiPdf(\'' + r.temp + '\', \'' + r.numero_formulario + '\', this)">💾 Guardar PDF</button>';
-                      pendingCount++;
-                    } else {
-                      estado = '<span style="color:#3167CA">📄 Nueva resolución</span>';
-                      accion = '<button type="button" class="btn btn-sm multi-save-btn" data-type="new" data-idx="' + idx + '" id="multiSaveNew_' + idx + '" style="background:#3167CA;color:white;border:none;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer" onclick="guardarMultiResolucion(' + idx + ', this)">💾 Guardar</button>';
-                      pendingCount++;
-                    }
-                    html += '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 8px">' + r.archivo + '</td><td style="padding:6px 8px;font-family:monospace">' + r.numero_formulario + '</td><td style="padding:6px 8px;text-align:center">' + estado + '</td><td style="padding:6px 8px;text-align:center">' + accion + '</td></tr>';
-                  });
-                  html += '</tbody></table>';
-                  // Add "Guardar todos" button if there are pending items
-                  if (pendingCount > 1) {
-                    html += '<div style="text-align:right;margin-top:12px"><button type="button" id="btnGuardarTodos" style="background:linear-gradient(135deg,#3167CA,#1e4fa0);color:white;border:none;padding:8px 24px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(49,103,202,0.3);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 4px 12px rgba(49,103,202,0.4)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 2px 8px rgba(49,103,202,0.3)\'" onclick="guardarTodos(this)">💾 Guardar todos (' + pendingCount + ')</button></div>';
+                  if (data.ok) {
+                    btn.textContent = '✅ Guardado';
+                    btn.style.background = '#27AE60';
+                  } else {
+                    btn.textContent = '❌ Error';
+                    btn.disabled = false;
+                    alert(data.error);
                   }
-                  multiResult.innerHTML = html;
                 })
-                .catch(() => { multiResult.innerHTML = '<div style="color:red;font-size:13px">❌ Error de conexión</div>'; });
+                .catch(() => { btn.textContent = '❌ Error'; btn.disabled = false; });
             }
-          }
-        });
 
-        // Global function for multi-save buttons (existing resolution, missing PDF only)
-        function guardarMultiPdf(tempFile, numResolucion, btn) {
-          btn.disabled = true;
-          btn.textContent = '⏳...';
-          fetch('/resoluciones/subir-pdf-temp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pdf_temp: tempFile, numero_resolucion: numResolucion })
-          })
-            .then(r => r.json())
-            .then(data => {
-              if (data.ok) {
-                btn.textContent = '✅ Guardado';
-                btn.style.background = '#27AE60';
-              } else {
-                btn.textContent = '❌ Error';
-                btn.disabled = false;
-                alert(data.error);
-              }
-            })
-            .catch(() => { btn.textContent = '❌ Error'; btn.disabled = false; });
-        }
+            let multiResultData = []; // store full result data per row
 
-        let multiResultData = []; // store full result data per row
-
-        // Global function for multi-save buttons (new resolution — create + save PDF)
-        function guardarMultiResolucion(idx, btn) {
-          const r = (typeof multiResultData !== 'undefined') ? multiResultData[idx] : null;
-          if (!r) { alert('Error: datos no disponibles'); return; }
-          btn.disabled = true;
-          btn.textContent = '⏳...';
-          fetch('/resoluciones/guardar-resolucion-pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pdf_temp: r.temp,
-              nit: r.nit || '',
-              nombre_tercero: r.nombre_tercero || '',
-              fecha_resolucion: r.fecha_resolucion || '',
-              numero_resolucion: r.numero_formulario || '',
-              modalidad: r.modalidad || '',
-              solicitud: r.solicitud || '',
-              prefijo: r.prefijo || '',
-              desde: r.desde || '',
-              hasta: r.hasta || '',
-              vigencia: r.vigencia || '',
-              establecimiento: r.establecimiento || ''
-            })
-          })
-            .then(resp => resp.json())
-            .then(data => {
-              if (data.ok) {
-                btn.textContent = '✅ Guardado';
-                btn.style.background = '#27AE60';
-              } else {
-                btn.textContent = '❌ Error';
-                btn.disabled = false;
-                alert(data.error);
-              }
-            })
-            .catch(() => { btn.textContent = '❌ Error'; btn.disabled = false; });
-        }
-
-        // Global function: save ALL pending items sequentially
-        async function guardarTodos(masterBtn) {
-          masterBtn.disabled = true;
-          masterBtn.textContent = '⏳ Guardando...';
-          const buttons = document.querySelectorAll('.multi-save-btn:not([disabled])');
-          let saved = 0, errors = 0;
-
-          for (const btn of buttons) {
-            const type = btn.dataset.type;
-            const idx = parseInt(btn.dataset.idx);
-            try {
-              if (type === 'pdf') {
-                // Existing resolution, save PDF only
-                const r = multiResultData[idx];
-                btn.disabled = true;
-                btn.textContent = '⏳...';
-                const resp = await fetch('/resoluciones/subir-pdf-temp', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ pdf_temp: r.temp, numero_resolucion: r.numero_formulario })
-                });
-                const data = await resp.json();
-                if (data.ok) { btn.textContent = '✅ Guardado'; btn.style.background = '#27AE60'; saved++; }
-                else { btn.textContent = '❌ Error'; btn.disabled = false; errors++; }
-              } else if (type === 'new') {
-                // New resolution — create + save PDF
-                const r = multiResultData[idx];
-                btn.disabled = true;
-                btn.textContent = '⏳...';
-                const resp = await fetch('/resoluciones/guardar-resolucion-pdf', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    pdf_temp: r.temp,
-                    nit: r.nit || '', nombre_tercero: r.nombre_tercero || '',
-                    fecha_resolucion: r.fecha_resolucion || '', numero_resolucion: r.numero_formulario || '',
-                    modalidad: r.modalidad || '', solicitud: r.solicitud || '',
-                    prefijo: r.prefijo || '', desde: r.desde || '', hasta: r.hasta || '',
-                    vigencia: r.vigencia || '', establecimiento: r.establecimiento || ''
-                  })
-                });
-                const data = await resp.json();
-                if (data.ok) { btn.textContent = '✅ Guardado'; btn.style.background = '#27AE60'; saved++; }
-                else { btn.textContent = '❌ Error'; btn.disabled = false; errors++; }
-              }
-            } catch (e) {
-              btn.textContent = '❌ Error';
-              btn.disabled = false;
-              errors++;
+            // Global function for multi-save buttons (new resolution — create + save PDF)
+            function guardarMultiResolucion(idx, btn) {
+              const r = (typeof multiResultData !== 'undefined') ? multiResultData[idx] : null;
+              if (!r) { alert('Error: datos no disponibles'); return; }
+              btn.disabled = true;
+              btn.textContent = '⏳...';
+              fetch('/resoluciones/guardar-resolucion-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  pdf_temp: r.temp,
+                  nit: r.nit || '',
+                  nombre_tercero: r.nombre_tercero || '',
+                  fecha_resolucion: r.fecha_resolucion || '',
+                  numero_resolucion: r.numero_formulario || '',
+                  modalidad: r.modalidad || '',
+                  solicitud: r.solicitud || '',
+                  prefijo: r.prefijo || '',
+                  desde: r.desde || '',
+                  hasta: r.hasta || '',
+                  vigencia: r.vigencia || '',
+                  establecimiento: r.establecimiento || ''
+                })
+              })
+                .then(resp => resp.json())
+                .then(data => {
+                  if (data.ok) {
+                    btn.textContent = '✅ Guardado';
+                    btn.style.background = '#27AE60';
+                  } else {
+                    btn.textContent = '❌ Error';
+                    btn.disabled = false;
+                    alert(data.error);
+                  }
+                })
+                .catch(() => { btn.textContent = '❌ Error'; btn.disabled = false; });
             }
-          }
 
-          if (errors === 0) {
-            masterBtn.textContent = '✅ Todos guardados (' + saved + ')';
-            masterBtn.style.background = '#27AE60';
-          } else {
-            masterBtn.textContent = '⚠️ ' + saved + ' guardados, ' + errors + ' errores';
-            masterBtn.style.background = '#E67E22';
-            masterBtn.disabled = false;
-          }
-        }
-      </script>
-</body>
+            // Global function: save ALL pending items sequentially
+            async function guardarTodos(masterBtn) {
+              masterBtn.disabled = true;
+              masterBtn.textContent = '⏳ Guardando...';
+              const buttons = document.querySelectorAll('.multi-save-btn:not([disabled])');
+              let saved = 0, errors = 0;
+
+              for (const btn of buttons) {
+                const type = btn.dataset.type;
+                const idx = parseInt(btn.dataset.idx);
+                try {
+                  if (type === 'pdf') {
+                    // Existing resolution, save PDF only
+                    const r = multiResultData[idx];
+                    btn.disabled = true;
+                    btn.textContent = '⏳...';
+                    const resp = await fetch('/resoluciones/subir-pdf-temp', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ pdf_temp: r.temp, numero_resolucion: r.numero_formulario })
+                    });
+                    const data = await resp.json();
+                    if (data.ok) { btn.textContent = '✅ Guardado'; btn.style.background = '#27AE60'; saved++; }
+                    else { btn.textContent = '❌ Error'; btn.disabled = false; errors++; }
+                  } else if (type === 'new') {
+                    // New resolution — create + save PDF
+                    const r = multiResultData[idx];
+                    btn.disabled = true;
+                    btn.textContent = '⏳...';
+                    const resp = await fetch('/resoluciones/guardar-resolucion-pdf', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        pdf_temp: r.temp,
+                        nit: r.nit || '', nombre_tercero: r.nombre_tercero || '',
+                        fecha_resolucion: r.fecha_resolucion || '', numero_resolucion: r.numero_formulario || '',
+                        modalidad: r.modalidad || '', solicitud: r.solicitud || '',
+                        prefijo: r.prefijo || '', desde: r.desde || '', hasta: r.hasta || '',
+                        vigencia: r.vigencia || '', establecimiento: r.establecimiento || ''
+                      })
+                    });
+                    const data = await resp.json();
+                    if (data.ok) { btn.textContent = '✅ Guardado'; btn.style.background = '#27AE60'; saved++; }
+                    else { btn.textContent = '❌ Error'; btn.disabled = false; errors++; }
+                  }
+                } catch (e) {
+                  btn.textContent = '❌ Error';
+                  btn.disabled = false;
+                  errors++;
+                }
+              }
+
+              if (errors === 0) {
+                masterBtn.textContent = '✅ Todos guardados (' + saved + ')';
+                masterBtn.style.background = '#27AE60';
+              } else {
+                masterBtn.textContent = '⚠️ ' + saved + ' guardados, ' + errors + ' errores';
+                masterBtn.style.background = '#E67E22';
+                masterBtn.disabled = false;
+              }
+            }
+          </script>
+  </body>
 
 </html>
