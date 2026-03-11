@@ -72,7 +72,7 @@ async function marcarResolucionesAnteriores(resolucion) {
         // Check if the existing resolution's range contains the new Habilitación's range
         if (relDesde <= habDesde && relHasta >= habHasta && !rel.checked) {
           await db.runAsync(
-            `UPDATE resoluciones SET checked = 1, vigencia_original = vigencia, vigencia = '' WHERE id = ?`,
+            `UPDATE resoluciones SET checked = 1 WHERE id = ?`,
             [rel.id]
           );
           console.log(`[AUTO-CHECK] ${rel.solicitud} #${rel.id} marcada como reemplazada por Habilitación (rango ${relDesde}-${relHasta} contiene ${habDesde}-${habHasta})`);
@@ -106,19 +106,13 @@ async function marcarResolucionesAnteriores(resolucion) {
 
       if (relHasta < hasta && !rel.checked) {
         // Existing resolution has smaller range → mark IT as checked
-        await db.runAsync(
-          `UPDATE resoluciones SET checked = 1, vigencia_original = vigencia, vigencia = '' WHERE id = ?`,
-          [rel.id]
-        );
+        await db.runAsync(`UPDATE resoluciones SET checked = 1 WHERE id = ?`, [rel.id]);
         console.log(`[AUTO-CHECK] Resolución #${rel.id} marcada como reemplazada (hasta=${relHasta} < ${hasta})`);
       } else if (relHasta > hasta && resolucion.id) {
         // Existing resolution has LARGER range → mark THE NEW ONE (self) as checked
         const self = await db.getAsync('SELECT checked, vigencia FROM resoluciones WHERE id = ?', [resolucion.id]);
         if (self && !self.checked) {
-          await db.runAsync(
-            `UPDATE resoluciones SET checked = 1, vigencia_original = vigencia, vigencia = '' WHERE id = ?`,
-            [resolucion.id]
-          );
+          await db.runAsync(`UPDATE resoluciones SET checked = 1 WHERE id = ?`, [resolucion.id]);
           console.log(`[AUTO-CHECK] Resolución #${resolucion.id} (nueva) marcada como reemplazada (hasta=${hasta} < ${relHasta})`);
         }
         break; // Self can only be checked once
@@ -934,6 +928,7 @@ router.patch('/:id/toggle-check', async (req, res) => {
   try {
     const row = await db.getAsync('SELECT checked FROM resoluciones WHERE id = ?', [req.params.id]);
     if (!row) return res.status(404).json({ error: 'No encontrada.' });
+
     const newVal = row.checked ? 0 : 1;
     await db.runAsync('UPDATE resoluciones SET checked = ? WHERE id = ?', [newVal, req.params.id]);
     res.json({ ok: true, checked: newVal });
@@ -941,6 +936,13 @@ router.patch('/:id/toggle-check', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// One-time data restoration (Restore vigencia from vigencia_original where it was moved)
+db.runAsync(`
+  UPDATE resoluciones 
+  SET vigencia = vigencia_original, vigencia_original = NULL 
+  WHERE vigencia_original IS NOT NULL AND (vigencia = '' OR vigencia IS NULL)
+`).catch(err => console.error('[RESTORE] Error restoring vigencia:', err.message));
 
 // Delete
 router.delete('/:id', async (req, res) => {
