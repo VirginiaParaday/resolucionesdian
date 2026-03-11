@@ -379,6 +379,37 @@ body {
   font-size: 12px;
 }
 
+.btn-del {
+  border-radius: 30px;
+  height: 34px;
+  width: 34px;
+  filter: grayscale(100%);
+  border-color: #c6c5ca;
+  opacity: 0.5;
+}
+
+.btn-del:hover {
+  border-color: #8b8b8b;
+  background-color: #dee2e2;
+  color: white;
+  opacity: 1;
+  filter: none;
+}
+
+.btn-del.active {
+  border-color: #80a5e6;
+  background-color: #bfd5fc;
+  color: white;
+  opacity: 1;
+  filter: none;
+}
+
+.btn-del.active:hover {
+  border-color: #e6809f;
+  background-color: #f8d4da;
+}
+
+
 .btn-sm-te {
   padding: 5px 10px;
   font-size: 12px;
@@ -745,7 +776,7 @@ td {
 }
 
 /* ACTIONS TOGGLE */
-.actions-wrapper {
+.actions-wrapper-single {
   position: relative;
   display: flex;
   align-items: center;
@@ -773,7 +804,7 @@ td {
 }
 
 tbody tr:hover .btn-toggle-actions,
-.actions-wrapper.open .btn-toggle-actions {
+.actions-wrapper-single.open .btn-toggle-actions {
   opacity: 1;
 }
 
@@ -788,7 +819,7 @@ tbody tr:hover .btn-toggle-actions,
   transition: transform 0.25s ease;
 }
 
-.actions-wrapper.open .toggle-icon {
+.actions-wrapper-single.open .toggle-icon {
   transform: rotate(45deg);
 }
 
@@ -814,7 +845,7 @@ tbody tr:hover .btn-toggle-actions,
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.actions-wrapper.open .actions-panel {
+.actions-wrapper-single.open .actions-panel {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(-50%) translateX(0);

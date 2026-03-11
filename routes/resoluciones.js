@@ -977,4 +977,53 @@ router.delete('/:id', async (req, res) => {
   res.redirect('/resoluciones');
 });
 
+// Bulk Delete
+router.post('/bulk-delete', async (req, res) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'No se enviaron IDs para eliminar.' });
+  }
+
+  try {
+    // 1. Get info for all resolutions to delete PDFs
+    // Using PostgreSQL ANY or IN
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+    const resoluciones = await db.allAsync(`SELECT * FROM resoluciones WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+
+    // 2. Delete PDFs from FTP
+    for (const r of resoluciones) {
+      try {
+        const pdfName = `${r.fecha_resolucion}-${r.numero_resolucion}.pdf`;
+        await deletePdfFromFtp(pdfName);
+      } catch (ftpErr) {
+        console.error(`[BULK-DELETE] Error eliminando PDF de ID ${r.id}:`, ftpErr.message);
+        // Continue deleting others even if one PDF fails
+      }
+
+      // If this was an Autorización, restore previously auto-checked resolutions (logic similar to delete single)
+      if (r.solicitud === 'Autorización') {
+        try {
+          const nitClean = (r.nit || '').split('-')[0];
+          await db.runAsync(
+            `UPDATE resoluciones SET vigencia = vigencia_original, vigencia_original = NULL, checked = 0
+             WHERE SPLIT_PART(nit, '-', 1) = ? AND modalidad = ? AND COALESCE(prefijo,'') = COALESCE(?,'')
+               AND vigencia_original IS NOT NULL AND id != ?`,
+            [nitClean, r.modalidad, r.prefijo || '', r.id]
+          );
+        } catch (restoreErr) {
+          console.error(`[BULK-DELETE] Error restaurando resoluciones para ID ${r.id}:`, restoreErr.message);
+        }
+      }
+    }
+
+    // 3. Delete from DB
+    await db.runAsync(`DELETE FROM resoluciones WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+
+    res.json({ ok: true, deleted: ids.length });
+  } catch (e) {
+    console.error('Error en bulk-delete:', e);
+    res.status(500).json({ error: 'Error al realizar la eliminación masiva: ' + e.message });
+  }
+});
+
 module.exports = router;

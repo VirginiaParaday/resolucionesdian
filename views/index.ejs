@@ -118,9 +118,19 @@
             <div class="table-card">
               <div class="table-header">
                 <span class="table-title">Listado de Resoluciones</span>
-                <span class="table-count">
-                  <%= totalFiltered %> registro<%= totalFiltered !==1 ? 's' : '' %>
-                </span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <span class="table-count" style="margin-right:8px">
+                    <%= totalFiltered %> registro<%= totalFiltered !==1 ? 's' : '' %>
+                  </span>
+                  <button type="button" class="btn btn-danger" id="btnConfirmBulkDelete"
+                    style="padding:5px 12px;font-size:12px;height:32px;border-radius:18px;display:none">
+                    🗑️ Eliminar seleccionados (<span id="selectedCount">0</span>)
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm btn-del" id="btnToggleBulkDelete"
+                    title="Modo eliminación masiva">
+                    🗑️
+                  </button>
+                </div>
               </div>
               <div class="table-wrap">
                 <% if (resoluciones.length===0) { %>
@@ -164,7 +174,12 @@
                           <th>Hasta</th>
                           <th>Vigencia</th>
                           <th>Vencimiento</th>
-                          <th>Acciones</th>
+                          <th style="width:100px;text-align:center">
+                            <span id="labelAcciones">Acciones</span>
+                            <div id="checkAllWrapper" style="display:none">
+                              <input type="checkbox" id="chkSelectAll" style="width:16px;height:16px;cursor:pointer">
+                            </div>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -178,11 +193,11 @@
                           const _hoy = new Date(); _hoy.setHours(0,0,0,0);
                           const _fv = new Date(r.fecha_resolucion + 'T00:00:00');
                           _fv.setMonth(_fv.getMonth() + _vig);
-                          const _diff = Math.ceil((_fv - _hoy) / (1000*60*60*24));
-                          if (_diff < 0) _rowBg='background:rgba(231,76,60,0.10);' ; else if (_diff===0)
-                            _rowBg='background:rgba(192,57,43,0.15);' ; else if (_diff===1)
-                            _rowBg='background:rgba(230,126,34,0.12);' ; else if (_diff <=5)
-                            _rowBg='background:rgba(241,196,15,0.12);' ; } %>
+                          const _diff = Math.ceil((_fv - _hoy) / (1000 * 60 * 60 * 24));
+                          if (_diff < 0) _rowBg='background:rgba(231,76,60,0.10)' ; else if (_diff===0)
+                            _rowBg='background:rgba(192,57,43,0.15)' ; else if (_diff===1)
+                            _rowBg='background:rgba(230,126,34,0.12)' ; else if (_diff <=5)
+                            _rowBg='background:rgba(241,196,15,0.12)' ; } %>
                             <tr style="<%= _rowBg %>">
                               <td class="td-num" style="color:var(--muted)">
                                 <%= startIndex + i + 1 %>
@@ -254,7 +269,11 @@
                                               <% } else { %>—<% } %>
                               </td>
                               <td>
-                                <div class="actions-wrapper">
+                                <div class="actions-wrapper-bulk" style="display:none">
+                                  <input type="checkbox" class="bulk-select-chk" data-id="<%= r.id %>"
+                                    style="width:18px;height:18px;cursor:pointer">
+                                </div>
+                                <div class="actions-wrapper-single">
                                   <button type="button" class="btn btn-sm btn-toggle-actions" title="Acciones"
                                     onclick="toggleActions(this)">
                                     <span class="toggle-icon">+</span>
@@ -296,6 +315,12 @@
                       </tbody>
                     </table>
                     <% } %>
+              </div>
+              <div id="bulkDeleteToast" class="bulk-toast" style="display:none">
+                <div class="bulk-toast-content">
+                  <span class="bulk-toast-text">Modo Selección Activo</span>
+                  <button type="button" class="btn-bulk-cancel" onclick="disableBulkDelete()">✕</button>
+                </div>
               </div>
               <% if (totalPages> 1) { %>
                 <div class="pagination">
@@ -372,25 +397,25 @@
             }
 
             function toggleActions(btn) {
-              const wrapper = btn.closest('.actions-wrapper');
+              const wrapper = btn.closest('.actions-wrapper-single');
               const wasOpen = wrapper.classList.contains('open');
               // Close all other open panels
-              document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+              document.querySelectorAll('.actions-wrapper-single.open').forEach(w => w.classList.remove('open'));
               // Toggle current
               if (!wasOpen) wrapper.classList.add('open');
             }
 
             // Close actions panel on click outside
             document.addEventListener('click', function (e) {
-              if (!e.target.closest('.actions-wrapper')) {
-                document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+              if (!e.target.closest('.actions-wrapper-single')) {
+                document.querySelectorAll('.actions-wrapper-single.open').forEach(w => w.classList.remove('open'));
               }
             });
 
             // Close actions panel on Escape key
             document.addEventListener('keydown', function (e) {
               if (e.key === 'Escape') {
-                document.querySelectorAll('.actions-wrapper.open').forEach(w => w.classList.remove('open'));
+                document.querySelectorAll('.actions-wrapper-single.open').forEach(w => w.classList.remove('open'));
               }
             });
             // ── Sort table ──
@@ -456,6 +481,104 @@
               rows.forEach((row, i) => {
                 row.cells[0].textContent = i + 1;
                 tbody.appendChild(row);
+              });
+            }
+
+            // ── Bulk Delete Logic ──
+            let isBulkDeleteActive = false;
+            const btnToggleBulk = document.getElementById('btnToggleBulkDelete');
+            const btnConfirmBulk = document.getElementById('btnConfirmBulkDelete');
+            const selectAllChk = document.getElementById('chkSelectAll');
+            const checkAllWrapper = document.getElementById('checkAllWrapper');
+            const labelAcciones = document.getElementById('labelAcciones');
+            const bulkToast = document.getElementById('bulkDeleteToast');
+            const bulkCheckboxes = document.querySelectorAll('.bulk-select-chk');
+            const selectedCountSpan = document.getElementById('selectedCount');
+
+            function updateSelectedCount() {
+              const count = document.querySelectorAll('.bulk-select-chk:checked').length;
+              selectedCountSpan.textContent = count;
+            }
+
+            function enableBulkDelete() {
+              isBulkDeleteActive = true;
+              btnToggleBulk.classList.add('active');
+              labelAcciones.style.display = 'none';
+              checkAllWrapper.style.display = 'block';
+              bulkToast.style.display = 'block';
+              btnConfirmBulk.style.display = 'inline-flex';
+
+              document.querySelectorAll('.actions-wrapper-single').forEach(el => el.style.display = 'none');
+              document.querySelectorAll('.actions-wrapper-bulk').forEach(el => el.style.display = 'block');
+            }
+
+            function disableBulkDelete() {
+              isBulkDeleteActive = false;
+              btnToggleBulk.classList.remove('active');
+              labelAcciones.style.display = 'block';
+              checkAllWrapper.style.display = 'none';
+              bulkToast.style.display = 'none';
+              btnConfirmBulk.style.display = 'none';
+
+              // Reset checkboxes
+              if (selectAllChk) selectAllChk.checked = false;
+              document.querySelectorAll('.bulk-select-chk').forEach(chk => chk.checked = false);
+
+              document.querySelectorAll('.actions-wrapper-single').forEach(el => el.style.display = 'block');
+              document.querySelectorAll('.actions-wrapper-bulk').forEach(el => el.style.display = 'none');
+            }
+
+            if (btnToggleBulk) {
+              btnToggleBulk.addEventListener('click', () => {
+                if (isBulkDeleteActive) disableBulkDelete();
+                else enableBulkDelete();
+              });
+            }
+
+            if (selectAllChk) {
+              selectAllChk.addEventListener('change', () => {
+                document.querySelectorAll('.bulk-select-chk').forEach(chk => chk.checked = selectAllChk.checked);
+                updateSelectedCount();
+              });
+            }
+
+            document.addEventListener('change', (e) => {
+              if (e.target.classList.contains('bulk-select-chk')) {
+                updateSelectedCount();
+              }
+            });
+
+            if (btnConfirmBulk) {
+              btnConfirmBulk.addEventListener('click', async () => {
+                const selectedIds = Array.from(document.querySelectorAll('.bulk-select-chk:checked'))
+                  .map(chk => chk.dataset.id);
+
+                if (selectedIds.length === 0) return;
+
+                if (confirm(`¿Está seguro de que desea eliminar ${selectedIds.length} resoluciones y sus archivos PDF correspondientes?\nEsta acción es irreversible.`)) {
+                  btnConfirmBulk.disabled = true;
+                  btnConfirmBulk.textContent = '⏳ Eliminando...';
+
+                  try {
+                    const resp = await fetch('/resoluciones/bulk-delete', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ ids: selectedIds })
+                    });
+                    const data = await resp.json();
+                    if (data.ok) {
+                      location.reload();
+                    } else {
+                      alert('Error: ' + data.error);
+                      btnConfirmBulk.disabled = false;
+                      btnConfirmBulk.innerHTML = `🗑️ Eliminar seleccionados (<span id="selectedCount">${selectedIds.length}</span>)`;
+                    }
+                  } catch (err) {
+                    alert('Error de conexión');
+                    btnConfirmBulk.disabled = false;
+                    btnConfirmBulk.innerHTML = `🗑️ Eliminar seleccionados (<span id="selectedCount">${selectedIds.length}</span>)`;
+                  }
+                }
               });
             }
           </script>
