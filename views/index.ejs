@@ -261,7 +261,7 @@
                                   </button>
                                   <div class="actions-panel">
                                     <% if (r.has_pdf) { %>
-                                      <a href="/uploads/pdfs/Clients/Billing Resolutions/<%= r.fecha_resolucion %>-<%= r.numero_resolucion %>.pdf"
+                                      <a href="<%= ftpBaseUrl %>/<%= encodeURIComponent(r.fecha_resolucion + '-' + r.numero_resolucion + '.pdf') %>"
                                         target="_blank" class="btn btn-sm btn-outline" title="Ver PDF"
                                         style="color:#E67E22;border-color:#E67E22">📁</a>
                                       <% } else { %>
