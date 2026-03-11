@@ -122,16 +122,16 @@
                   <span class="table-count" style="margin-right:8px">
                     <%= totalFiltered %> registro<%= totalFiltered !==1 ? 's' : '' %>
                   </span>
-                  <% if (resoluciones.length > 0) { %>
-                  <button type="button" class="btn btn-danger" id="btnConfirmBulkDelete"
-                    style="padding:5px 12px;font-size:12px;height:32px;border-radius:18px;display:none">
-                    🗑️ Eliminar seleccionados (<span id="selectedCount">0</span>)
-                  </button>
-                  <button type="button" class="btn btn-outline btn-sm btn-del" id="btnToggleBulkDelete"
-                    title="Modo eliminación masiva">
-                    🗑️
-                  </button>
-                  <% } %>
+                  <% if (resoluciones.length> 0) { %>
+                    <button type="button" class="btn btn-danger" id="btnConfirmBulkDelete"
+                      style="padding:5px 12px;font-size:12px;height:32px;border-radius:18px;display:none">
+                      🗑️ Eliminar seleccionados (<span id="selectedCount">0</span>)
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm btn-del" id="btnToggleBulkDelete"
+                      title="Modo eliminación masiva">
+                      🗑️
+                    </button>
+                    <% } %>
                 </div>
               </div>
               <div class="table-wrap">
