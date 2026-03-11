@@ -10,7 +10,7 @@ const FTP_CONFIG = {
 };
 
 const FTP_BASE_PATH = process.env.FTP_BASE_PATH || '/files/clients/billing_resolutions';
-const FTP_BASE_URL = process.env.FTP_BASE_URL || 'http://files.imperiagroup.co/files/clients/billing_resolutions';
+const FTP_BASE_URL = process.env.FTP_BASE_URL || 'http://files.imperiagroup.co/imperiagroup/files/clients/billing_resolutions';
 
 /**
  * Get a connected FTP client. Caller must close it after use.
