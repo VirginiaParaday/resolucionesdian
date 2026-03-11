@@ -38,7 +38,7 @@
                 </div>
               </div>
 
-              <form method="POST" action="<%= action %>">
+              <form method="POST" action="<%= action %>" id="resolucionForm">
                 <input type="hidden" name="pdf_temp" id="pdfTempInput" value="">
                 <input type="hidden" name="guardar_pdf" id="guardarPdfFlag" value="0">
 
@@ -164,14 +164,14 @@
                       </div>
                       <div class="form-group">
                         <label>Desde <span class="req">*</span></label>
-                        <input type="number" name="desde" value="<%= resolucion ? resolucion.desde : '' %>"
-                          placeholder="Ej: 1" min="0" required>
+                        <input type="text" class="format-number" name="desde" value="<%= resolucion && resolucion.desde ? Number(resolucion.desde).toLocaleString('es-CO') : '' %>"
+                          placeholder="Ej: 1" required>
                         <span class="hint">Número inicial del rango</span>
                       </div>
                       <div class="form-group">
                         <label>Hasta <span class="req">*</span></label>
-                        <input type="number" name="hasta" value="<%= resolucion ? resolucion.hasta : '' %>"
-                          placeholder="Ej: 999999" min="0" required>
+                        <input type="text" class="format-number" name="hasta" value="<%= resolucion && resolucion.hasta ? Number(resolucion.hasta).toLocaleString('es-CO') : '' %>"
+                          placeholder="Ej: 999.999" required>
                         <span class="hint">Número final del rango</span>
                       </div>
                     </div>
@@ -490,6 +490,30 @@
             }
 
             document.addEventListener('DOMContentLoaded', () => {
+              // Formateo de separador de miles
+              function formatMiles(input) {
+                let val = input.value;
+                let num = val.replace(/\D/g, '');
+                if (!num) {
+                  input.value = '';
+                  return;
+                }
+                input.value = Number(num).toLocaleString('es-CO');
+              }
+              
+              document.querySelectorAll('.format-number').forEach(input => {
+                input.addEventListener('input', function() { formatMiles(this); });
+              });
+
+              const resolucionForm = document.getElementById('resolucionForm');
+              if (resolucionForm) {
+                resolucionForm.addEventListener('submit', () => {
+                  document.querySelectorAll('.format-number').forEach(input => {
+                    input.value = input.value.replace(/\D/g, '');
+                  });
+                });
+              }
+
               const fechaInput = document.querySelector('input[name="fecha_resolucion"]');
               if (fechaInput) fechaInput.addEventListener('change', calcularVencimiento);
               calcularVencimiento();
@@ -711,14 +735,14 @@
 
                     // Desde
                     if (data.desde) {
-                      document.querySelector('input[name="desde"]').value = data.desde;
+                      document.querySelector('input[name="desde"]').value = Number(data.desde).toLocaleString('es-CO');
                       const desdeFmt = Number(data.desde).toLocaleString('es-CO');
                       campos.push(`<strong>Desde:</strong> ${desdeFmt}`);
                     }
 
                     // Hasta
                     if (data.hasta) {
-                      document.querySelector('input[name="hasta"]').value = data.hasta;
+                      document.querySelector('input[name="hasta"]').value = Number(data.hasta).toLocaleString('es-CO');
                       const hastaFmt = Number(data.hasta).toLocaleString('es-CO');
                       campos.push(`<strong>Hasta:</strong> ${hastaFmt}`);
                     }
