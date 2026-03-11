@@ -1410,6 +1410,22 @@ tbody tr:hover .btn-toggle-actions,
   margin-top: 12px;
 }
 
+.multi-drop-zone {
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 55px 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.multi-drop-zone:hover,
+.multi-drop-zone.drag-over {
+  border-color: var(--dian-blue);
+  background: #F5F8FF;
+}
+
 /* PDF Progress */
 .pdf-progress {
   margin-top: 16px;
