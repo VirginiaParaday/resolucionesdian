@@ -5,7 +5,7 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const path = require('path');
 const fs = require('fs');
-const { uploadPdfToFtp, deletePdfFromFtp, checkPdfExistsOnFtp, getPdfUrl, FTP_BASE_URL } = require('../utils/ftpHelper');
+const { uploadPdfToFtp, deletePdfFromFtp, checkPdfExistsHttp, checkPdfsBatchHttp, getPdfUrl, FTP_BASE_URL } = require('../utils/ftpHelper');
 
 // Multer config for PDF uploads
 const uploadPdf = multer({
@@ -469,11 +469,7 @@ router.post('/parsear-pdf', uploadPdf.single('pdf'), async (req, res) => {
         // Check if PDF file already exists
         const pdfNombre = `${resExiste.fecha_resolucion}-${resExiste.numero_resolucion}`;
         resultado.pdf_nombre = pdfNombre;
-        try {
-          resultado.pdf_existe = await checkPdfExistsOnFtp(pdfNombre + '.pdf');
-        } catch (e) {
-          resultado.pdf_existe = false;
-        }
+        resultado.pdf_existe = await checkPdfExistsHttp(pdfNombre + '.pdf');
       }
     }
 
@@ -550,11 +546,7 @@ router.post('/validar-pdfs', uploadPdf.array('pdfs', 50), async (req, res) => {
           if (row) {
             existe = true;
             pdfNombre = `${row.fecha_resolucion}-${row.numero_resolucion}`;
-            try {
-              pdfExiste = await checkPdfExistsOnFtp(pdfNombre + '.pdf');
-            } catch (e) {
-              pdfExiste = false;
-            }
+            pdfExiste = await checkPdfExistsHttp(pdfNombre + '.pdf');
           }
         }
 
@@ -751,13 +743,11 @@ router.get('/', async (req, res) => {
 
   try {
     let resoluciones = await db.allAsync(query, params);
-    // Check PDF existence on FTP for each resolution
+    // Check PDF existence via HTTP (works from Railway which blocks FTP port 21)
+    const pdfNames = resoluciones.map(r => `${r.fecha_resolucion}-${r.numero_resolucion}.pdf`);
+    const existingPdfs = await checkPdfsBatchHttp(pdfNames);
     for (const r of resoluciones) {
-      try {
-        r.has_pdf = await checkPdfExistsOnFtp(`${r.fecha_resolucion}-${r.numero_resolucion}.pdf`);
-      } catch (e) {
-        r.has_pdf = false;
-      }
+      r.has_pdf = existingPdfs.has(`${r.fecha_resolucion}-${r.numero_resolucion}.pdf`);
     }
 
     // Filter by vencimiento status if requested

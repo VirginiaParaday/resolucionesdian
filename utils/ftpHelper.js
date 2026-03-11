@@ -4,7 +4,7 @@ const path = require('path');
 const FTP_CONFIG = {
   host: process.env.FTP_HOST || 'ftp.imperiagroup.co',
   user: process.env.FTP_USER || 'imperiagroup@files.imperiagroup.co',
-  password: process.env.FTP_PASS || '',
+  password: process.env.FTP_PASS || 'In.8690101416/ig',
   port: parseInt(process.env.FTP_PORT) || 21,
   secure: false
 };
@@ -25,7 +25,7 @@ async function getClient() {
 /**
  * Upload a local file to the FTP server.
  * @param {string} localFilePath - Absolute path to the local file
- * @param {string} remoteFileName - Name of the file on the FTP server (e.g. "2024-01-15-18762003231498.pdf")
+ * @param {string} remoteFileName - Name of the file on the FTP server
  */
 async function uploadPdfToFtp(localFilePath, remoteFileName) {
   const client = await getClient();
@@ -49,7 +49,6 @@ async function deletePdfFromFtp(remoteFileName) {
     await client.remove(remoteFileName);
     console.log(`[FTP] Deleted: ${remoteFileName}`);
   } catch (err) {
-    // File may not exist — log but don't throw
     console.warn(`[FTP] Could not delete ${remoteFileName}: ${err.message}`);
   } finally {
     client.close();
@@ -57,22 +56,41 @@ async function deletePdfFromFtp(remoteFileName) {
 }
 
 /**
- * Check if a file exists on the FTP server.
+ * Check if a PDF exists via HTTP HEAD request to the public URL.
+ * This works from any server (including Railway which blocks FTP port 21).
  * @param {string} remoteFileName - Name of the file to check
  * @returns {boolean}
  */
-async function checkPdfExistsOnFtp(remoteFileName) {
-  const client = await getClient();
+async function checkPdfExistsHttp(remoteFileName) {
   try {
-    await client.cd(FTP_BASE_PATH);
-    const list = await client.list();
-    return list.some(f => f.name === remoteFileName);
+    const url = `${FTP_BASE_URL}/${encodeURIComponent(remoteFileName)}`;
+    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+    return res.ok;
   } catch (err) {
-    console.warn(`[FTP] Error checking ${remoteFileName}: ${err.message}`);
     return false;
-  } finally {
-    client.close();
   }
+}
+
+/**
+ * Batch-check multiple PDF filenames via HTTP HEAD requests.
+ * Runs all requests in parallel for speed.
+ * @param {string[]} fileNames - Array of filenames to check
+ * @returns {Set<string>} Set of filenames that exist
+ */
+async function checkPdfsBatchHttp(fileNames) {
+  const results = await Promise.allSettled(
+    fileNames.map(async (name) => {
+      const exists = await checkPdfExistsHttp(name);
+      return { name, exists };
+    })
+  );
+  const existingFiles = new Set();
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value.exists) {
+      existingFiles.add(r.value.name);
+    }
+  }
+  return existingFiles;
 }
 
 /**
@@ -87,7 +105,8 @@ function getPdfUrl(remoteFileName) {
 module.exports = {
   uploadPdfToFtp,
   deletePdfFromFtp,
-  checkPdfExistsOnFtp,
+  checkPdfExistsHttp,
+  checkPdfsBatchHttp,
   getPdfUrl,
   FTP_BASE_URL
 };
